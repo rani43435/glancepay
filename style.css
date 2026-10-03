@@ -160,19 +160,31 @@ html, body {
 .screen:not([hidden]) { animation: screenIn .28s ease-out; }
 @keyframes screenIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-/* Code / card found: corners snap inward, then a check pops */
-.cam-wrap::before, .cam-wrap::after { transition: transform .35s cubic-bezier(.3,1.6,.5,1), border-color .2s; }
-.cam-wrap.locked::before { transform: translate(28px, 22px); border-color: var(--accent); }
-.cam-wrap.locked::after { transform: translate(-28px, -22px); border-color: var(--accent); }
+/* Scanning: a light line sweeps up and down inside the frame.
+   Found: the line stops, the frame flashes green and a check pops. */
+.scan-line {
+  position: absolute; left: 6%; right: 6%; top: 8%; height: 3px; border-radius: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 12px 3px color-mix(in srgb, var(--accent) 70%, transparent);
+  animation: sweep 1.6s ease-in-out infinite alternate;
+}
+@keyframes sweep { from { top: 8%; } to { top: 92%; } }
+.cam-wrap.locked .scan-line { display: none; }
+.cam-wrap.locked { animation: flash .6s ease-out forwards; }
+@keyframes flash {
+  0% { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+  100% { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+}
+.cam-wrap.locked::before, .cam-wrap.locked::after { border-color: var(--accent); border-width: 6px; }
 .lock-check {
   position: absolute; left: 50%; top: 50%; width: 88px; height: 88px; margin: -44px 0 0 -44px;
   fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
   opacity: 0; transform: scale(.4);
 }
-.cam-wrap.locked .lock-check { animation: checkPop .45s .15s cubic-bezier(.3,1.6,.5,1) forwards; }
+.cam-wrap.locked .lock-check { animation: checkPop .4s .1s cubic-bezier(.3,1.6,.5,1) forwards; }
 @keyframes checkPop { to { opacity: 1; transform: scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen:not([hidden]), .cam-wrap.locked .lock-check { animation: none; opacity: 1; transform: none; }
-  .cam-wrap::before, .cam-wrap::after { transition: none; }
+  .screen:not([hidden]), .cam-wrap.locked .lock-check, .cam-wrap.locked { animation: none; opacity: 1; transform: none; }
+  .scan-line { animation: none; top: 50%; }
 }
