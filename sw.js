@@ -1,7 +1,7 @@
 // Keeps the app shell on the device so repeat launches open instantly,
 // even on a slow link. Pages: network first (to pick up updates), falling
 // back to the cache. Versioned files (?v=…), icons and jsQR: cache first.
-const CACHE = 'glancepay-v7';
+const CACHE = 'glancepay-v8';
 const SHELL = [
   './',
   'index.html',
@@ -33,8 +33,8 @@ self.addEventListener('fetch', (e) => {
   if (isPage) {
     e.respondWith(
       fetch(req)
-        .then((res) => { caches.open(CACHE).then((c) => c.put('index.html', res.clone())); return res; })
-        .catch(() => caches.match('index.html'))
+        .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
+        .catch(() => caches.match(req).then((hit) => hit || caches.match('index.html')))
     );
   } else if (cacheFirst) {
     e.respondWith(

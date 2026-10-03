@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=600, height=600, initial-scale=1">
+<meta name="description" content="Live German to English translation laid over the text you look at. Prototype.">
+<meta name="application-name" content="Lens Translate">
+<meta name="mrbd-web-app-capable" content="yes">
+<meta name="theme-color" content="#7FE3B0">
+<link rel="icon" type="image/png" href="../icons/favicon.png">
+<title>Lens Translate</title>
+<style>
+  /* Additive display: black = see-through. Only the translations light up. */
+  :root { --fg: #F2F2EF; --dim: #A3A6AD; --accent: #7FE3B0; --line: #3A3D44; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #app { position: relative; width: 600px; height: 600px; max-width: 100%; max-height: 100%; margin: 0 auto; }
+  #cam { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  .top { position: absolute; top: 24px; left: 28px; right: 28px; display: flex; justify-content: space-between; align-items: center; }
+  .lang { font-size: 18px; letter-spacing: 2px; color: var(--accent); font-weight: 600; }
+  .status { font-size: 18px; color: var(--dim); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+  .dot.live { background: var(--accent); }
+
+  /* Translations sit where the German text is */
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  .tr {
+    position: absolute; transform: translateY(-50%);
+    font-weight: 700; color: #fff; line-height: 1.1; white-space: nowrap;
+    border-bottom: 2px solid var(--accent); padding-bottom: 2px;
+    transition: opacity .2s;
+  }
+  .tr.rough { color: #DADCE0; border-bottom-style: dashed; }
+
+  .center-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 40px; }
+  .center-msg[hidden] { display: none; }
+  .big { font-size: 30px; font-weight: 600; }
+  .sub { font-size: 20px; color: var(--dim); }
+  .bar { width: 260px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+  .bottom { position: absolute; left: 28px; right: 28px; bottom: 24px; display: flex; gap: 12px; }
+  .btn {
+    flex: 1; font: inherit; font-size: 20px; font-weight: 600; min-height: 56px; border-radius: 999px;
+    border: 2px solid var(--line); background: transparent; color: var(--fg); cursor: pointer;
+  }
+  .btn:focus { outline: none; }
+  .btn:focus-visible { background: var(--fg); border-color: var(--fg); color: #000; }
+  .btn.primary { border-color: var(--accent); color: var(--accent); }
+  .btn.primary:focus-visible { background: var(--accent); color: #000; }
+</style>
+</head>
+<body>
+<main id="app">
+  <video id="cam" playsinline muted></video>
+
+  <div class="top">
+    <span class="lang">DE → EN</span>
+    <span class="status"><span class="dot" id="dot"></span><span id="status">Starting…</span></span>
+  </div>
+
+  <div id="overlay" aria-live="polite"></div>
+
+  <div class="center-msg" id="msg">
+    <div class="big" id="msgBig">Getting ready</div>
+    <div class="sub" id="msgSub">Loading German reading (first time only)</div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+
+  <div class="bottom">
+    <button class="btn primary" id="pause">Pause</button>
+    <button class="btn" id="mirror">Mirror: off</button>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+// Lens Translate — prototype for Meta Ray-Ban Display (runs in the simulator
+// with the computer's webcam). Reads German text from the camera, and lays an
+// English translation over each line. Instant word-by-word translation from a
+// built-in shopping dictionary, then a better line translation from MyMemory.
+
+const $ = (id) => document.getElementById(id);
+const W = 600, H = 600;
+
+// ---------- built-in dictionary (shopping words, instant) ----------
+const DICT = {
+  angebot:'offer', sonderangebot:'special offer', rabatt:'discount', preis:'price', aktion:'promo',
+  je:'per', stück:'piece', stk:'pc', packung:'pack', inhalt:'contents', neu:'new', nur:'only', gratis:'free',
+  milch:'milk', vollmilch:'whole milk', fettarm:'low-fat', fettarme:'low-fat', laktosefrei:'lactose-free',
+  glutenfrei:'gluten-free', vegan:'vegan', vegetarisch:'vegetarian', bio:'organic', frisch:'fresh', frische:'fresh',
+  brot:'bread', brötchen:'bread rolls', toast:'toast', kuchen:'cake', käse:'cheese', butter:'butter',
+  joghurt:'yogurt', sahne:'cream', quark:'quark', eier:'eggs', ei:'egg', wurst:'sausage', schinken:'ham',
+  aufschnitt:'cold cuts', hähnchen:'chicken', huhn:'chicken', geflügel:'poultry', rind:'beef',
+  rindfleisch:'beef', schwein:'pork', schweinefleisch:'pork', hackfleisch:'minced meat', rinderhack:'minced beef',
+  fisch:'fish', lachs:'salmon', thunfisch:'tuna', zucker:'sugar', mehl:'flour', salz:'salt', pfeffer:'pepper',
+  öl:'oil', essig:'vinegar', reis:'rice', nudeln:'pasta', kartoffeln:'potatoes', zwiebeln:'onions',
+  knoblauch:'garlic', tomaten:'tomatoes', gurke:'cucumber', paprika:'bell pepper', salat:'salad',
+  gemüse:'vegetables', obst:'fruit', apfel:'apple', äpfel:'apples', banane:'banana', bananen:'bananas',
+  orangen:'oranges', zitronen:'lemons', erdbeeren:'strawberries', trauben:'grapes', saft:'juice',
+  wasser:'water', sprudel:'sparkling', still:'still', getränke:'drinks', bier:'beer', wein:'wine',
+  kaffee:'coffee', tee:'tea', schokolade:'chocolate', süßigkeiten:'sweets', kekse:'cookies', chips:'crisps',
+  nüsse:'nuts', erdnüsse:'peanuts', mandeln:'almonds', weizen:'wheat', hafer:'oats', soja:'soy',
+  zutaten:'ingredients', enthält:'contains', spuren:'traces', von:'of', ohne:'without', mit:'with',
+  und:'and', oder:'or', für:'for', aus:'from', zum:'for', kochen:'cooking', backen:'baking',
+  tiefgekühlt:'frozen', tiefkühl:'frozen', gekühlt:'chilled', kühl:'cool', lagern:'store',
+  mindestens:'at least', haltbar:'keeps', bis:'until', mhd:'best before', pfand:'deposit',
+  kasse:'checkout', eingang:'entrance', ausgang:'exit', geöffnet:'open', geschlossen:'closed',
+  heute:'today', morgen:'tomorrow', woche:'week', täglich:'daily', hier:'here', alle:'all', jetzt:'now',
+  sparen:'save', günstig:'cheap', billig:'cheap', leicht:'light', scharf:'spicy', süß:'sweet', sauer:'sour',
+  natur:'plain', ganz:'whole', halb:'half', groß:'large', klein:'small', mild:'mild', würzig:'savory',
+};
+
+function roughTranslate(line) {
+  return line.split(/(\s+)/).map((w) => {
+    const key = w.toLowerCase().replace(/[^a-zäöüß-]/g, '');
+    return DICT[key] ? w.replace(/[A-Za-zÄÖÜäöüß-]+/, DICT[key]) : w;
+  }).join('');
+}
+
+// ---------- better translation for whole lines (cached) ----------
+const cache = new Map();   // German line -> English
+const asking = new Set();
+async function fetchTranslation(line) {
+  if (cache.has(line) || asking.has(line)) return;
+  asking.add(line);
+  try {
+    const url = 'https://api.mymemory.translated.net/get?langpair=de|en&q=' + encodeURIComponent(line);
+    const res = await fetch(url);
+    const data = await res.json();
+    const t = data && data.responseData && data.responseData.translatedText;
+    if (t && !/MYMEMORY WARNING/i.test(t)) cache.set(line, t);
+  } catch (e) { /* offline: the dictionary version stays */ }
+  asking.delete(line);
+}
+
+// ---------- camera + reading ----------
+let worker = null, paused = false, mirror = false, busy = false;
+const video = $('cam');
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+let lastLines = [];
+
+function setStatus(text, live) {
+  $('status').textContent = text;
+  $('dot').classList.toggle('live', !!live);
+}
+
+async function start() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    $('msgBig').textContent = 'Camera not available';
+    $('msgSub').textContent = 'Allow the camera and reload';
+    setStatus('No camera');
+    return;
+  }
+
+  try {
+    worker = await Tesseract.createWorker('deu', 1, {
+      logger: (m) => {
+        if (m.status && typeof m.progress === 'number') $('bar').style.width = Math.round(m.progress * 100) + '%';
+      },
+    });
+  } catch (e) {
+    $('msgBig').textContent = 'Could not load German reading';
+    $('msgSub').textContent = 'Check the internet connection and reload';
+    setStatus('Error');
+    return;
+  }
+
+  $('msg').hidden = true;
+  setStatus('Live', true);
+  $('pause').focus();
+  loop();
+}
+
+// Reads a frame, then waits a moment before the next one. Old translations
+// stay on screen while the next frame is read, so there is no loading gap.
+async function loop() {
+  if (!paused && !busy && video.videoWidth) {
+    busy = true;
+    const cw = 960;
+    const ch = Math.round(video.videoHeight * (cw / video.videoWidth));
+    canvas.width = cw; canvas.height = ch;
+    ctx.filter = 'grayscale(1) contrast(1.4)';
+    ctx.drawImage(video, 0, 0, cw, ch);
+    ctx.filter = 'none';
+    try {
+      const { data } = await worker.recognize(canvas);
+      lastLines = (data.lines || [])
+        .map((l) => ({ text: clean(l.text), conf: l.confidence, box: l.bbox }))
+        .filter((l) => l.conf > 55 && /[A-Za-zÄÖÜäöüß]{2,}/.test(l.text));
+      lastLines.forEach((l) => fetchTranslation(l.text));
+      render(cw, ch);
+    } catch (e) { /* skip this frame */ }
+    busy = false;
+  }
+  setTimeout(loop, 400);
+}
+
+function clean(t) {
+  return t.replace(/[|_~^`]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+// Map a box from the camera frame onto the 600x600 display (fill, centred).
+function render(cw, ch) {
+  const s = Math.max(W / cw, H / ch);
+  const ox = (W - cw * s) / 2, oy = (H - ch * s) / 2;
+  const out = $('overlay');
+  out.innerHTML = '';
+  lastLines.slice(0, 8).forEach((l) => {
+    let x = l.box.x0 * s + ox;
+    const y = ((l.box.y0 + l.box.y1) / 2) * s + oy;
+    const h = (l.box.y1 - l.box.y0) * s;
+    if (mirror) x = W - (l.box.x1 * s + ox);
+    if (y < 70 || y > H - 90) return; // keep clear of the top label and buttons
+    const el = document.createElement('div');
+    const good = cache.get(l.text);
+    el.className = 'tr' + (good ? '' : ' rough');
+    el.textContent = good || roughTranslate(l.text);
+    el.style.left = Math.max(8, Math.min(W - 40, x)) + 'px';
+    el.style.top = y + 'px';
+    el.style.fontSize = Math.max(18, Math.min(40, h * 0.9)) + 'px';
+    el.style.maxWidth = (W - 16 - Math.max(8, x)) + 'px';
+    el.style.overflow = 'hidden';
+    el.style.textOverflow = 'ellipsis';
+    out.appendChild(el);
+  });
+  setStatus(lastLines.length ? 'Live · ' + lastLines.length + ' lines' : 'Live · look at German text', true);
+}
+
+// ---------- buttons (D-pad: left/right move, Enter presses) ----------
+$('pause').addEventListener('click', () => {
+  paused = !paused;
+  $('pause').textContent = paused ? 'Resume' : 'Pause';
+  setStatus(paused ? 'Paused' : 'Live', !paused);
+});
+$('mirror').addEventListener('click', () => {
+  mirror = !mirror;
+  $('mirror').textContent = 'Mirror: ' + (mirror ? 'on' : 'off');
+});
+document.addEventListener('keydown', (e) => {
+  const b = [$('pause'), $('mirror')];
+  const i = b.indexOf(document.activeElement);
+  if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+    b[(i + 1) % 2].focus();
+    e.preventDefault();
+  }
+});
+
+start();
+</script>
+</body>
+</html>
