@@ -11,7 +11,19 @@
 const DEMO_CODE = 'glancepay:pay?m=Demo%20Caf%C3%A9&a=3.80&c=EUR&i=Flat%20white';
 
 // Example cards (not real). New cards come from test card codes.
-const CARDS = ['Visa •• 42', 'Mastercard •• 17'];
+// Card colours. Black is invisible on the additive display, so every
+// colour is a bright accent used for the outline and text.
+const CARD_COLORS = {
+  blue: '#6EA8FF', orange: '#FFAA5C', teal: '#5FD8C8',
+  gold: '#F2C94C', silver: '#D6D9DE', pink: '#FF8FB8',
+};
+const BRAND_COLOR = { Visa: 'blue', Mastercard: 'orange', Amex: 'teal' };
+
+const CARDS = [
+  { brand: 'Visa', last: '42', color: 'blue' },
+  { brand: 'Mastercard', last: '17', color: 'orange' },
+];
+const cardLabel = (c) => c.brand + ' •• ' + c.last;
 
 const state = {
   screen: 'home',
@@ -69,7 +81,7 @@ function openConfirm(payment) {
   state.pending = payment;
   $('#cMerchant').textContent = payment.merchant;
   $('#cAmount').textContent = money(payment.amount, payment.currency);
-  $('#cItem').textContent = [payment.item, CARDS[state.card]].filter(Boolean).join(' · ');
+  $('#cItem').textContent = [payment.item, cardLabel(CARDS[state.card])].filter(Boolean).join(' · ');
   show('confirm');
 }
 
@@ -82,7 +94,9 @@ function parseCard(text) {
   const brand = p.get('b');
   const last = (p.get('l') || '').replace(/\D/g, '').slice(-2);
   if (!brand || last.length !== 2) return null;
-  return brand + ' •• ' + last;
+  const k = p.get('k');
+  const color = CARD_COLORS[k] ? k : (BRAND_COLOR[brand] || 'silver');
+  return { brand, last, color };
 }
 
 async function startCamera(msg, readyText) {
@@ -146,7 +160,7 @@ function pay() {
   $('#payingText').textContent = 'Paying ' + money(p.amount, p.currency) + '…';
   show('paying');
   setTimeout(() => {
-    state.history.unshift({ ...p, card: CARDS[state.card], at: new Date() });
+    state.history.unshift({ ...p, card: cardLabel(CARDS[state.card]), at: new Date() });
     $('#doneText').textContent = money(p.amount, p.currency) + ' to ' + p.merchant;
     state.pending = null;
     show('done');
@@ -181,16 +195,25 @@ function renderHistory() {
 
 // Adds a card only when the camera actually reads a card code.
 function addCard(card) {
-  if (!CARDS.includes(card)) CARDS.push(card);
-  state.card = CARDS.indexOf(card);
-  $('#cardName').textContent = card;
-  $('#addedText').textContent = card;
+  let i = CARDS.findIndex((c) => c.brand === card.brand && c.last === card.last);
+  if (i === -1) { CARDS.push(card); i = CARDS.length - 1; }
+  else CARDS[i] = card;
+  state.card = i;
+  renderCard();
+  $('#addedText').textContent = cardLabel(card);
   show('cardadded');
 }
 
 function switchCard() {
   state.card = (state.card + 1) % CARDS.length;
-  $('#cardName').textContent = CARDS[state.card];
+  renderCard();
+}
+
+function renderCard() {
+  const c = CARDS[state.card];
+  $('#cardBrand').textContent = c.brand;
+  $('#cardName').textContent = '•• ' + c.last;
+  $('.card-btn').style.setProperty('--card', CARD_COLORS[c.color]);
 }
 
 // ---------- input ----------
@@ -223,4 +246,5 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+renderCard();
 show('home');

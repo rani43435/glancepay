@@ -45,6 +45,17 @@
       </select>
     </label>
     <label>Last 2 digits<input id="l" value="08" maxlength="2" inputmode="numeric"></label>
+    <label>Colour
+      <select id="k">
+        <option value="">Brand colour</option>
+        <option value="blue">Blue</option>
+        <option value="orange">Orange</option>
+        <option value="teal">Teal</option>
+        <option value="gold">Gold</option>
+        <option value="silver">Silver</option>
+        <option value="pink">Pink</option>
+      </select>
+    </label>
     <button>Update</button>
   </form>
 
@@ -69,7 +80,7 @@
     const enc = encodeURIComponent;
     const text = mode === 'pay'
       ? 'glancepay:pay?m=' + enc($('m').value) + '&a=' + enc($('a').value.replace(',', '.')) + '&c=EUR&i=' + enc($('i').value)
-      : 'glancepay:card?b=' + enc($('b').value) + '&l=' + enc($('l').value);
+      : 'glancepay:card?b=' + enc($('b').value) + '&l=' + enc($('l').value) + ($('k').value ? '&k=' + $('k').value : '');
     const qr = qrcode(0, 'M');
     qr.addData(text);
     qr.make();

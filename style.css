@@ -120,9 +120,14 @@ html, body {
   min-height: 0; padding: 14px 20px; border-radius: 20px; text-align: left;
   border-color: var(--line); margin-top: 8px;
 }
-.card-label { font-size: 16px; font-weight: 500; color: var(--dim); }
-.card-name { font-size: 36px; font-weight: 700; }
-.btn.card-btn:focus-visible .card-label, .btn.card-btn.is-focused .card-label { color: #333; }
+.btn.card-btn { --card: var(--fg); border-color: var(--card); background: color-mix(in srgb, var(--card) 12%, transparent); }
+.card-top { display: flex; justify-content: space-between; width: 100%; align-items: baseline; }
+.card-brand { font-size: 20px; font-weight: 700; color: var(--card); }
+.card-hint { font-size: 15px; font-weight: 500; color: var(--dim); }
+.card-name { font-size: 36px; font-weight: 700; color: var(--card); }
+.btn.card-btn:focus-visible, .btn.card-btn.is-focused { background: var(--card); border-color: var(--card); }
+.btn.card-btn:focus-visible :is(.card-brand, .card-name, .card-hint),
+.btn.card-btn.is-focused :is(.card-brand, .card-name, .card-hint) { color: #000; }
 
 .card-row { display: flex; gap: 12px; align-items: stretch; margin-top: 8px; }
 .card-row .card-btn { flex: 1; margin-top: 0; }
