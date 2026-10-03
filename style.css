@@ -155,3 +155,24 @@ html, body {
 .list li .who { display: flex; flex-direction: column; gap: 2px; }
 .list li .time { font-size: 16px; color: var(--dim); font-weight: 400; }
 .list li .amt { font-weight: 600; align-self: center; }
+
+/* Screens slide in gently instead of jumping like a reload */
+.screen:not([hidden]) { animation: screenIn .28s ease-out; }
+@keyframes screenIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Code / card found: corners snap inward, then a check pops */
+.cam-wrap::before, .cam-wrap::after { transition: transform .35s cubic-bezier(.3,1.6,.5,1), border-color .2s; }
+.cam-wrap.locked::before { transform: translate(28px, 22px); border-color: var(--accent); }
+.cam-wrap.locked::after { transform: translate(-28px, -22px); border-color: var(--accent); }
+.lock-check {
+  position: absolute; left: 50%; top: 50%; width: 88px; height: 88px; margin: -44px 0 0 -44px;
+  fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0; transform: scale(.4);
+}
+.cam-wrap.locked .lock-check { animation: checkPop .45s .15s cubic-bezier(.3,1.6,.5,1) forwards; }
+@keyframes checkPop { to { opacity: 1; transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen:not([hidden]), .cam-wrap.locked .lock-check { animation: none; opacity: 1; transform: none; }
+  .cam-wrap::before, .cam-wrap::after { transition: none; }
+}

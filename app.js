@@ -130,12 +130,23 @@ function scanLoop() {
     const found = window.jsQR(img.data, w, h);
     if (found) {
       const payment = parseCode(found.data);
-      if (payment) { openConfirm(payment); return; }
+      if (payment) { lockOn('#scan .cam-wrap', () => openConfirm(payment)); return; }
       state.msg.hidden = false;
       state.msg.textContent = 'That is not a pay code';
     }
   }
   state.scanTimer = setTimeout(scanLoop, 250);
+}
+
+// Found something: the scan corners snap in and a check pops, then move on.
+function lockOn(selector, next) {
+  const wrap = $(selector);
+  if (state.msg) state.msg.hidden = true;
+  wrap.classList.add('locked');
+  setTimeout(() => {
+    wrap.classList.remove('locked');
+    next();
+  }, 650);
 }
 
 // ---------- pay / cancel ----------
@@ -231,7 +242,7 @@ function cardLoop() {
       const found = window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
       if (found) info = parseCard(found.data);
     }
-    if (info) { takeCard(f, info); return; }
+    if (info) { lockOn('#addcard .cam-wrap', () => takeCard(f, info)); return; }
 
     const cw = Math.round(w * 0.6), ch = Math.round(h * 0.4);
     const centre = mainColors(ctx.getImageData(Math.round((w - cw) / 2), Math.round((h - ch) / 2), cw, ch).data);
@@ -245,7 +256,7 @@ function cardLoop() {
     }
     state.candidate = looksLikeCard ? centre.bgRgb : null;
     state.msg.textContent = state.steady > 0 ? 'Hold still…' : 'Hold your card in the frame';
-    if (state.steady >= 4) { takeCard(f, null); return; }
+    if (state.steady >= 4) { lockOn('#addcard .cam-wrap', () => takeCard(f, null)); return; }
   }
   state.scanTimer = setTimeout(cardLoop, 250);
 }
