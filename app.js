@@ -54,12 +54,12 @@ function go(name) {
   if (name === state.screen) return;
   if (name === 'home') {
     if (depth > 0) { history.go(-depth); return; } // popstate shows home
-    history.replaceState({ screen: 'home', depth: 0 }, '');
+    history.replaceState({ screen: 'home', depth: 0 }, '', location.pathname);
   } else if (REPLACE.includes(name)) {
-    history.replaceState({ screen: name, depth }, '');
+    history.replaceState({ screen: name, depth }, '', '#' + name);
   } else {
     depth++;
-    history.pushState({ screen: name, depth }, '');
+    history.pushState({ screen: name, depth }, '', '#' + name);
   }
   show(name);
 }
@@ -475,5 +475,6 @@ $('#editCardName').addEventListener('input', (e) => {
 
 load();
 renderCard();
-history.replaceState({ screen: 'home', depth: 0 }, '');
+// Always start on Home (a reload on a deeper screen starts fresh)
+history.replaceState({ screen: 'home', depth: 0 }, '', location.pathname);
 show('home');
