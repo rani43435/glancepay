@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glance Pay – Shop till</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #F4F1EA;
+    --panel: #FFFFFF;
+    --ink: #1B1B1A;
+    --dim: #6B6862;
+    --line: #E2DDD2;
+    --accent: #1F7A4D;
+    --accent-ink: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+  }
+  .wrap {
+    max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px;
+    display: grid; gap: 20px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* On a phone the pay code comes first, right under the shop name */
+  @media (max-width: 859px) {
+    header { order: -2; }
+    .pay { order: -1; }
+    .qr-box { max-width: 260px; }
+  }
+  @media (min-width: 860px) {
+    .wrap { grid-template-columns: minmax(0, 1fr) 380px; align-items: start; }
+    .pay { position: sticky; top: 20px; }
+  }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; grid-column: 1 / -1; }
+  .shop-name {
+    font: inherit; font-size: 26px; font-weight: 700; border: none; background: transparent;
+    color: var(--ink); padding: 4px 0; width: 100%; max-width: 420px;
+  }
+  .shop-name:focus { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+  .tag { font-size: 13px; color: var(--dim); white-space: nowrap; }
+
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); margin: 0 0 10px; }
+
+  /* Menu */
+  .menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .item {
+    font: inherit; text-align: left; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px; min-height: 84px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
+    position: relative;
+  }
+  .item:hover { border-color: var(--accent); }
+  .item:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .item .n { font-size: 16px; font-weight: 600; }
+  .item .p { font-size: 15px; color: var(--dim); }
+  .item .count {
+    position: absolute; top: 10px; right: 10px; min-width: 24px; height: 24px; padding: 0 6px;
+    border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+    font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .item .count[hidden] { display: none; }
+
+  .custom { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .custom input {
+    font: inherit; font-size: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--panel); flex: 1 1 140px; min-width: 0;
+  }
+  .btn {
+    font: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
+    padding: 12px 18px; min-height: 46px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink);
+  }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .btn.dark { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* Order + QR */
+  .pay {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+    padding: 20px; display: flex; flex-direction: column; gap: 16px;
+  }
+  .qr-box {
+    aspect-ratio: 1; width: 100%; max-width: 300px; align-self: center;
+    border-radius: 16px; background: #fff; border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
+  }
+  .qr-box img { width: 100%; height: 100%; image-rendering: pixelated; transition: opacity .2s; }
+  .qr-box.changing img { opacity: .25; }
+  .qr-empty { color: var(--dim); font-size: 15px; text-align: center; padding: 20px; }
+  .total-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .total-label { color: var(--dim); font-size: 15px; }
+  .total { font-size: 40px; font-weight: 800; letter-spacing: -1px; }
+
+  .lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .lines li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .lines li:last-child { border-bottom: none; }
+  .lines .ln { flex: 1; min-width: 0; font-size: 15px; }
+  .lines .lp { font-size: 15px; font-variant-numeric: tabular-nums; }
+  .qty { display: flex; align-items: center; gap: 6px; }
+  .qty button {
+    font: inherit; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--bg); cursor: pointer; font-size: 18px; line-height: 1;
+  }
+  .qty span { min-width: 18px; text-align: center; font-weight: 600; }
+  .empty-lines { color: var(--dim); font-size: 15px; padding: 6px 0; }
+  .hint { font-size: 13px; color: var(--dim); text-align: center; margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <label style="flex:1">
+      <span class="tag" style="display:block">Shop name (tap to change)</span>
+      <input class="shop-name" id="shop" value="Demo Café" aria-label="Shop name">
+    </label>
+    <span class="tag">Glance Pay till · test only</span>
+  </header>
+
+  <main>
+    <h2>Menu</h2>
+    <div class="menu" id="menu"></div>
+
+    <form class="custom" id="customForm">
+      <input id="customName" placeholder="Other item" aria-label="Other item name">
+      <input id="customPrice" placeholder="Price €" inputmode="decimal" aria-label="Other item price">
+      <button class="btn">Add</button>
+    </form>
+  </main>
+
+  <aside class="pay" aria-live="polite">
+    <div class="qr-box" id="qrBox"><div class="qr-empty">Add items to show the pay code</div></div>
+    <div class="total-row">
+      <span class="total-label">Total</span>
+      <span class="total" id="total">0,00 €</span>
+    </div>
+    <ul class="lines" id="lines"></ul>
+    <button class="btn dark" id="clear" type="button">New order</button>
+    <p class="hint">The customer looks at this code with Glance Pay. It updates with every change.</p>
+  </aside>
+</div>
+
+<script>
+  const MENU = [
+    { name: 'Espresso', price: 2.20 },
+    { name: 'Flat white', price: 3.80 },
+    { name: 'Cappuccino', price: 3.50 },
+    { name: 'Iced latte', price: 4.20 },
+    { name: 'Croissant', price: 2.90 },
+    { name: 'Cheese pretzel', price: 3.10 },
+    { name: 'Cookie', price: 2.40 },
+    { name: 'Water', price: 1.90 },
+  ];
+  const order = new Map(); // name -> { price, qty }
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n);
+
+  function renderMenu() {
+    $('menu').innerHTML = '';
+    MENU.forEach((m) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'item';
+      b.innerHTML = '<span class="n"></span><span class="p"></span><span class="count" hidden></span>';
+      b.querySelector('.n').textContent = m.name;
+      b.querySelector('.p').textContent = fmt(m.price);
+      b.addEventListener('click', () => add(m.name, m.price));
+      m.el = b;
+      $('menu').appendChild(b);
+    });
+  }
+
+  function add(name, price) {
+    const e = order.get(name) || { price, qty: 0 };
+    e.qty++;
+    order.set(name, e);
+    render();
+  }
+
+  function change(name, d) {
+    const e = order.get(name);
+    if (!e) return;
+    e.qty += d;
+    if (e.qty <= 0) order.delete(name);
+    render();
+  }
+
+  function total() {
+    let t = 0;
+    order.forEach((e) => { t += e.price * e.qty; });
+    return Math.round(t * 100) / 100;
+  }
+
+  function summary() {
+    const parts = [];
+    order.forEach((e, name) => parts.push((e.qty > 1 ? e.qty + '× ' : '') + name));
+    const s = parts.join(', ');
+    return s.length > 60 ? s.slice(0, 57) + '…' : s;
+  }
+
+  function render() {
+    // menu counters
+    MENU.forEach((m) => {
+      const c = m.el.querySelector('.count');
+      const e = order.get(m.name);
+      c.hidden = !e;
+      c.textContent = e ? e.qty : '';
+    });
+
+    // order lines
+    const ul = $('lines');
+    ul.innerHTML = '';
+    if (!order.size) {
+      const li = document.createElement('li');
+      li.className = 'empty-lines';
+      li.textContent = 'No items yet';
+      ul.appendChild(li);
+    }
+    order.forEach((e, name) => {
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="qty"><button type="button" aria-label="One less">−</button><span></span><button type="button" aria-label="One more">+</button></span><span class="ln"></span><span class="lp"></span>';
+      li.querySelector('.qty span').textContent = e.qty;
+      li.querySelector('.ln').textContent = name;
+      li.querySelector('.lp').textContent = fmt(e.price * e.qty);
+      const [minus, plus] = li.querySelectorAll('.qty button');
+      minus.addEventListener('click', () => change(name, -1));
+      plus.addEventListener('click', () => change(name, 1));
+      ul.appendChild(li);
+    });
+
+    const t = total();
+    $('total').textContent = fmt(t);
+    drawQr(t);
+  }
+
+  // The QR is rebuilt every time the price changes.
+  function drawQr(t) {
+    const box = $('qrBox');
+    if (t <= 0) {
+      box.innerHTML = '<div class="qr-empty">Add items to show the pay code</div>';
+      return;
+    }
+    const enc = encodeURIComponent;
+    const text = 'glancepay:pay?m=' + enc($('shop').value || 'Shop') + '&a=' + t.toFixed(2) + '&c=EUR&i=' + enc(summary());
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    box.classList.add('changing');
+    box.innerHTML = qr.createImgTag(8, 8);
+    box.querySelector('img').alt = 'Pay code for ' + fmt(t);
+    requestAnimationFrame(() => box.classList.remove('changing'));
+  }
+
+  $('customForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('customName').value.trim() || 'Item';
+    const price = parseFloat($('customPrice').value.replace(',', '.'));
+    if (!isFinite(price) || price <= 0) { $('customPrice').focus(); return; }
+    add(name, Math.round(price * 100) / 100);
+    $('customName').value = '';
+    $('customPrice').value = '';
+  });
+  $('clear').addEventListener('click', () => { order.clear(); render(); });
+  $('shop').addEventListener('input', () => drawQr(total()));
+
+  renderMenu();
+  render();
+</script>
+</body>
+</html>
