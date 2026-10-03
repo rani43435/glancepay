@@ -105,7 +105,7 @@ async function startCamera(msg, readyText) {
     await video.play();
     if (readyText === 'Starting camera…') msg.hidden = true;
     else msg.textContent = readyText;
-    scanLoop();
+    if (state.screen === 'addcard') cardLoop(); else scanLoop();
   } catch (e) {
     msg.textContent = 'Camera not available';
   }
@@ -203,36 +203,61 @@ function renderHistory() {
   });
 }
 
-// ---------- add a card: read its colours from the camera ----------
-// Grabs the middle of the camera frame (where the card is held), finds the
-// two main colours, and reads a test-card QR if there is one.
-function captureCard() {
+// ---------- add a card: detected automatically by the camera ----------
+// The card is held in the middle of the view. Each moment we compare the
+// middle of the frame with the edges: when the middle is one clear colour
+// that differs from the background, and stays that way for about a second,
+// the card is taken. A test-card QR is taken straight away.
+function grabFrame() {
   const video = $('#cam');
-  if (!state.stream || !video.videoWidth) {
-    state.msg.textContent = 'Camera not ready yet';
-    return;
-  }
-  const canvas = document.createElement('canvas');
+  const canvas = grabFrame.canvas || (grabFrame.canvas = document.createElement('canvas'));
   const w = 320;
   const h = Math.round(video.videoHeight * (w / video.videoWidth));
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(video, 0, 0, w, h);
+  return { ctx, w, h };
+}
 
+function cardLoop() {
+  const video = $('#cam');
+  if (state.screen !== 'addcard' || !state.stream) return;
+  if (video.videoWidth) {
+    const f = grabFrame();
+    const { ctx, w, h } = f;
+
+    let info = null;
+    if (window.jsQR) {
+      const found = window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
+      if (found) info = parseCard(found.data);
+    }
+    if (info) { takeCard(f, info); return; }
+
+    const cw = Math.round(w * 0.6), ch = Math.round(h * 0.4);
+    const centre = mainColors(ctx.getImageData(Math.round((w - cw) / 2), Math.round((h - ch) / 2), cw, ch).data);
+    const edge = mainColors(ctx.getImageData(0, 0, w, Math.round(h * 0.15)).data);
+    const looksLikeCard = centre.share >= 0.35 && colorDist(centre.bgRgb, edge.bgRgb) > 60;
+
+    if (looksLikeCard && state.candidate && colorDist(centre.bgRgb, state.candidate) < 40) {
+      state.steady++;
+    } else {
+      state.steady = looksLikeCard ? 1 : 0;
+    }
+    state.candidate = looksLikeCard ? centre.bgRgb : null;
+    state.msg.textContent = state.steady > 0 ? 'Hold still…' : 'Hold your card in the frame';
+    if (state.steady >= 4) { takeCard(f, null); return; }
+  }
+  state.scanTimer = setTimeout(cardLoop, 250);
+}
+
+function takeCard({ ctx, w, h }, info) {
+  state.steady = 0;
+  state.candidate = null;
   // Centre area, card-shaped (about 60% x 40% of the frame)
   const cw = Math.round(w * 0.6), ch = Math.round(h * 0.4);
-  const cx = Math.round((w - cw) / 2), cy = Math.round((h - ch) / 2);
-  const colors = mainColors(ctx.getImageData(cx, cy, cw, ch).data);
-
-  let info = null;
-  if (window.jsQR) {
-    const all = ctx.getImageData(0, 0, w, h);
-    const found = window.jsQR(all.data, w, h);
-    if (found) info = parseCard(found.data);
-  }
-  const n = CARDS.length + 1;
+  const colors = mainColors(ctx.getImageData(Math.round((w - cw) / 2), Math.round((h - ch) / 2), cw, ch).data);
   state.newCard = {
-    name: info ? info.name : 'Card ' + n,
+    name: info ? info.name : 'Card ' + (CARDS.length + 1),
     last: info ? info.last : '',
     bg: colors.bg,
     fg: colors.fg,
@@ -240,6 +265,8 @@ function captureCard() {
   paintCard($('#previewCard'), state.newCard);
   show('cardpreview');
 }
+
+const colorDist = (a, b) => Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
 
 // Most common colour = card background; the next clearly different common
 // colour = print colour. Falls back to white/black for readable text.
@@ -257,13 +284,12 @@ function mainColors(data) {
   const list = [...buckets.values()]
     .map((e) => ({ n: e.n, r: e.r / e.n, g: e.g / e.n, b: e.b / e.n }))
     .sort((a, b) => b.n - a.n);
-  const dist = (a, b) => Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
   const first = list[0];
-  const second = list.find((c) => c.n >= total * 0.04 && dist(c, first) > 90);
+  const second = list.find((c) => c.n >= total * 0.04 && colorDist(c, first) > 90);
   const lum = (c) => (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
   const hex = (c) => '#' + [c.r, c.g, c.b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
   const fg = second || (lum(first) > 0.55 ? { r: 20, g: 20, b: 20 } : { r: 255, g: 255, b: 255 });
-  return { bg: hex(first), fg: hex(fg) };
+  return { bg: hex(first), fg: hex(fg), bgRgb: first, share: first.n / total };
 }
 
 function confirmAddCard() {
@@ -300,7 +326,6 @@ document.addEventListener('click', (e) => {
   const action = btn.dataset.action;
   if (action === 'demo') openConfirm(parseCode(DEMO_CODE));
   if (action === 'switchCard') switchCard();
-  if (action === 'capture') captureCard();
   if (action === 'addCard') confirmAddCard();
   if (action === 'pay') pay();
   if (action === 'cancel') cancel();
