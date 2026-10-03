@@ -150,7 +150,7 @@ let qrSeq = 0;
 const qrWaiting = new Map();
 function decodeQR(img) {
   if (!qrWorker) {
-    qrWorker = new Worker('qr-worker.js?v=20261003-5');
+    qrWorker = new Worker('qr-worker.js?v=20261003-6');
     qrWorker.onmessage = (e) => {
       const done = qrWaiting.get(e.data.id);
       qrWaiting.delete(e.data.id);
@@ -274,7 +274,7 @@ async function cardLoop() {
   const video = $('#cam');
   if (state.screen !== 'addcard' || !state.stream) return;
   if (video.videoWidth) {
-    const f = grabFrame();
+    const f = grabFrame(160); // colours need few pixels; keeps each check cheap
     const { ctx, w, h } = f;
 
     const cw = Math.round(w * 0.6), ch = Math.round(h * 0.4);
@@ -487,6 +487,13 @@ $('#newCardName').addEventListener('input', (e) => {
 $('#editCardName').addEventListener('input', (e) => {
   $('#editPreview .card-brand').textContent = cleanName(e.target.value) || 'Card';
 });
+
+// Cache the app shell after the first screen is up (not during startup)
+if ('serviceWorker' in navigator) {
+  const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('requestIdleCallback' in window) requestIdleCallback(reg, { timeout: 3000 });
+  else setTimeout(reg, 2000);
+}
 
 load();
 renderCard();
