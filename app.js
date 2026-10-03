@@ -82,7 +82,7 @@ async function startCamera() {
     state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     video.srcObject = state.stream;
     await video.play();
-    msg.textContent = 'Scanning…';
+    msg.hidden = true;
     scanLoop();
   } catch (e) {
     msg.textContent = 'Camera not available. Use the demo code.';
