@@ -5,12 +5,10 @@
 // navigation; in a desktop browser use Arrow keys to move and Enter to press.
 // Escape / Backspace = back.
 //
-// Two kinds of QR codes (QR text):
-//   Pay a shop:        glancepay:pay?m=<merchant>&a=<amount>&c=<currency>&i=<item>
-//   Receive from a friend (they show it on their phone):
-//                      glancepay:send?f=<from>&a=<amount>&c=<currency>&n=<note>
-// The glasses display is private, so the wearer always scans; the other
-// person always shows the code.
+// Pay code format (QR text):  glancepay:pay?m=<merchant>&a=<amount>&c=<currency>&i=<item>
+// Example: glancepay:pay?m=Demo%20Caf%C3%A9&a=3.80&c=EUR&i=Flat%20white
+
+const DEMO_CODE = 'glancepay:pay?m=Demo%20Caf%C3%A9&a=3.80&c=EUR&i=Flat%20white';
 
 const state = {
   screen: 'home',
@@ -35,27 +33,24 @@ function show(name) {
 }
 
 function back() {
-  const map = { scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home', received: 'home' };
+  const map = { scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
   if (state.screen === 'confirm') { cancel(); return; }
-  if (state.screen === 'accept') { decline(); return; }
   if (map[state.screen]) show(map[state.screen]);
 }
 
 // ---------- pay code parsing ----------
 function parseCode(text) {
   try {
-    const m = /^glancepay:(pay|send)\?(.*)$/.exec(text);
-    if (!m) return null;
-    const p = new URLSearchParams(m[2]);
+    if (!text.startsWith('glancepay:pay?')) return null;
+    const p = new URLSearchParams(text.slice('glancepay:pay?'.length));
     const amount = parseFloat(p.get('a'));
-    if (!isFinite(amount) || amount <= 0) return null;
-    const currency = p.get('c') || 'EUR';
-    if (m[1] === 'pay') {
-      if (!p.get('m')) return null;
-      return { type: 'pay', merchant: p.get('m'), amount, currency, item: p.get('i') || '' };
-    }
-    if (!p.get('f')) return null;
-    return { type: 'send', from: p.get('f'), amount, currency, note: p.get('n') || '' };
+    if (!p.get('m') || !isFinite(amount) || amount <= 0) return null;
+    return {
+      merchant: p.get('m'),
+      amount,
+      currency: p.get('c') || 'EUR',
+      item: p.get('i') || '',
+    };
   } catch (e) {
     return null;
   }
@@ -63,19 +58,6 @@ function parseCode(text) {
 
 function money(amount, currency) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(amount);
-}
-
-function openCode(code) {
-  if (code.type === 'send') openAccept(code);
-  else openConfirm(code);
-}
-
-function openAccept(transfer) {
-  state.pending = transfer;
-  $('#aFrom').textContent = transfer.from + ' sends you';
-  $('#aAmount').textContent = '+' + money(transfer.amount, transfer.currency);
-  $('#aNote').textContent = transfer.note;
-  show('accept');
 }
 
 function openConfirm(payment) {
@@ -125,10 +107,10 @@ function scanLoop() {
     const img = ctx.getImageData(0, 0, w, h);
     const found = window.jsQR(img.data, w, h);
     if (found) {
-      const code = parseCode(found.data);
-      if (code) { openCode(code); return; }
+      const payment = parseCode(found.data);
+      if (payment) { openConfirm(payment); return; }
       $('#camMsg').hidden = false;
-      $('#camMsg').textContent = 'Not a Glance Pay code';
+      $('#camMsg').textContent = 'That is not a pay code';
     }
   }
   state.scanTimer = setTimeout(scanLoop, 250);
@@ -153,27 +135,13 @@ function cancel() {
   show('cancelled');
 }
 
-function accept() {
-  const t = state.pending;
-  if (!t) return;
-  state.history.unshift({ merchant: t.from, amount: t.amount, currency: t.currency, incoming: true, at: new Date() });
-  $('#receivedText').textContent = '+' + money(t.amount, t.currency) + ' from ' + t.from;
-  state.pending = null;
-  show('received');
-}
-
-function decline() {
-  state.pending = null;
-  show('home');
-}
-
 function renderHistory() {
   const ul = $('#historyList');
   ul.innerHTML = '';
   if (!state.history.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.textContent = 'Nothing yet';
+    li.textContent = 'No payments yet';
     ul.appendChild(li);
     return;
   }
@@ -182,8 +150,7 @@ function renderHistory() {
     const a = document.createElement('span');
     const b = document.createElement('span');
     a.textContent = h.merchant;
-    b.textContent = (h.incoming ? '+' : '−') + money(h.amount, h.currency);
-    if (h.incoming) b.className = 'in';
+    b.textContent = money(h.amount, h.currency);
     li.append(a, b);
     ul.appendChild(li);
   });
@@ -195,10 +162,9 @@ document.addEventListener('click', (e) => {
   if (!btn) return;
   if (btn.dataset.go) show(btn.dataset.go);
   const action = btn.dataset.action;
+  if (action === 'demo') openConfirm(parseCode(DEMO_CODE));
   if (action === 'pay') pay();
   if (action === 'cancel') cancel();
-  if (action === 'accept') accept();
-  if (action === 'decline') decline();
 });
 
 // Arrow keys move focus between the buttons on the current screen

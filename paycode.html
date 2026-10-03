@@ -3,70 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Glance Pay – test codes</title>
+<title>Glance Pay – demo pay code</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
-  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; box-sizing: border-box; font-family: system-ui, sans-serif; background: #f2f2ef; color: #111; text-align: center; }
-  h1 { margin: 0; font-size: 24px; }
-  p { margin: 0; color: #444; }
-  #qr img { width: min(320px, 80vw); height: auto; image-rendering: pixelated; }
-  .tabs { display: flex; gap: 8px; }
-  .tabs button { font: inherit; padding: 10px 16px; border-radius: 999px; border: 1px solid #111; background: transparent; color: #111; cursor: pointer; }
-  .tabs button[aria-pressed="true"] { background: #111; color: #fff; }
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; font-family: system-ui, sans-serif; background: #f2f2ef; color: #111; }
+  #qr img { width: 320px; height: 320px; image-rendering: pixelated; }
   form { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; text-align: left; }
-  input { font: inherit; padding: 8px 10px; border: 1px solid #999; border-radius: 8px; width: 140px; }
-  form button { font: inherit; padding: 8px 14px; border-radius: 8px; border: none; background: #111; color: #fff; cursor: pointer; align-self: flex-end; }
+  input { font: inherit; padding: 8px 10px; border: 1px solid #999; border-radius: 8px; }
+  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: none; background: #111; color: #fff; cursor: pointer; }
 </style>
 </head>
 <body>
-  <div class="tabs">
-    <button type="button" id="tPay" aria-pressed="true">Shop: get paid</button>
-    <button type="button" id="tSend" aria-pressed="false">Friend: send money</button>
-  </div>
-  <h1 id="h">Pay code</h1>
-  <p id="hint">The glasses wearer scans this to pay.</p>
+  <h1 style="margin:0">Demo pay code</h1>
+  <p style="margin:0">Show this to the camera in Glance Pay.</p>
   <div id="qr"></div>
   <form id="f">
-    <label><span id="nameLabel">Shop</span><input id="name" value="Demo Café"></label>
-    <label>Amount (€)<input id="a" value="3.80" inputmode="decimal"></label>
-    <label><span id="extraLabel">Item</span><input id="extra" value="Flat white"></label>
+    <label>Shop <input id="m" value="Demo Café"></label>
+    <label>Amount <input id="a" value="3.80" size="6"></label>
+    <label>Item <input id="i" value="Flat white"></label>
     <button>Update</button>
   </form>
 <script>
-  let mode = 'pay';
-  const presets = {
-    pay:  { h: 'Pay code', hint: 'The glasses wearer scans this to pay.', name: 'Shop', extra: 'Item', nameVal: 'Demo Café', a: '3.80', extraVal: 'Flat white' },
-    send: { h: 'Send money', hint: 'The glasses wearer scans this to receive the money.', name: 'From', extra: 'Note', nameVal: 'Sara', a: '10', extraVal: 'Pizza last night' },
-  };
-  function setMode(m) {
-    mode = m;
-    const p = presets[m];
-    document.getElementById('tPay').setAttribute('aria-pressed', m === 'pay');
-    document.getElementById('tSend').setAttribute('aria-pressed', m === 'send');
-    document.getElementById('h').textContent = p.h;
-    document.getElementById('hint').textContent = p.hint;
-    document.getElementById('nameLabel').textContent = p.name;
-    document.getElementById('extraLabel').textContent = p.extra;
-    document.getElementById('name').value = p.nameVal;
-    document.getElementById('a').value = p.a;
-    document.getElementById('extra').value = p.extraVal;
-    draw();
-  }
   function draw() {
-    const name = encodeURIComponent(document.getElementById('name').value);
-    const a = encodeURIComponent(document.getElementById('a').value.replace(',', '.'));
-    const extra = encodeURIComponent(document.getElementById('extra').value);
-    const text = mode === 'pay'
-      ? 'glancepay:pay?m=' + name + '&a=' + a + '&c=EUR&i=' + extra
-      : 'glancepay:send?f=' + name + '&a=' + a + '&c=EUR&n=' + extra;
+    const m = document.getElementById('m').value;
+    const a = document.getElementById('a').value;
+    const i = document.getElementById('i').value;
+    const text = 'glancepay:pay?m=' + encodeURIComponent(m) + '&a=' + encodeURIComponent(a) + '&c=EUR&i=' + encodeURIComponent(i);
     const qr = qrcode(0, 'M');
     qr.addData(text);
     qr.make();
     document.getElementById('qr').innerHTML = qr.createImgTag(8, 16);
   }
-  document.getElementById('tPay').addEventListener('click', () => setMode('pay'));
-  document.getElementById('tSend').addEventListener('click', () => setMode('send'));
   document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); draw(); });
   draw();
 </script>
