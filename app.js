@@ -10,8 +10,11 @@
 
 const DEMO_CODE = 'glancepay:pay?m=Demo%20Caf%C3%A9&a=3.80&c=EUR&i=Flat%20white';
 
+const CARDS = ['Visa •• 42', 'Mastercard •• 17'];
+
 const state = {
   screen: 'home',
+  card: 0,
   pending: null,     // { merchant, amount, currency, item }
   history: [],
   stream: null,
@@ -26,7 +29,7 @@ function show(name) {
   if (state.screen === 'scan' && name !== 'scan') stopCamera();
   state.screen = name;
   $$('[data-screen]').forEach((s) => { s.hidden = s.id !== name; });
-  const first = $('#' + name + ' .btn');
+  const first = $('#' + name + ' [data-autofocus]') || $('#' + name + ' .btn');
   if (first) first.focus();
   if (name === 'scan') startCamera();
   if (name === 'history') renderHistory();
@@ -64,7 +67,7 @@ function openConfirm(payment) {
   state.pending = payment;
   $('#cMerchant').textContent = payment.merchant;
   $('#cAmount').textContent = money(payment.amount, payment.currency);
-  $('#cItem').textContent = payment.item;
+  $('#cItem').textContent = [payment.item, CARDS[state.card]].filter(Boolean).join(' · ');
   show('confirm');
 }
 
@@ -123,7 +126,7 @@ function pay() {
   $('#payingText').textContent = 'Paying ' + money(p.amount, p.currency) + '…';
   show('paying');
   setTimeout(() => {
-    state.history.unshift({ ...p, at: new Date() });
+    state.history.unshift({ ...p, card: CARDS[state.card], at: new Date() });
     $('#doneText').textContent = money(p.amount, p.currency) + ' to ' + p.merchant;
     state.pending = null;
     show('done');
@@ -156,6 +159,11 @@ function renderHistory() {
   });
 }
 
+function switchCard() {
+  state.card = (state.card + 1) % CARDS.length;
+  $('#cardName').textContent = CARDS[state.card];
+}
+
 // ---------- input ----------
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btn');
@@ -163,6 +171,7 @@ document.addEventListener('click', (e) => {
   if (btn.dataset.go) show(btn.dataset.go);
   const action = btn.dataset.action;
   if (action === 'demo') openConfirm(parseCode(DEMO_CODE));
+  if (action === 'switchCard') switchCard();
   if (action === 'pay') pay();
   if (action === 'cancel') cancel();
 });

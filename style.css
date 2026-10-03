@@ -113,3 +113,13 @@ html, body {
 }
 .list li span:last-child { font-weight: 600; }
 .list .empty { color: var(--dim); justify-content: flex-start; }
+
+/* Card switcher on the home screen: a focusable row, not a pill */
+.btn.card-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  min-height: 0; padding: 14px 20px; border-radius: 20px; text-align: left;
+  border-color: var(--line); margin-top: 8px;
+}
+.card-label { font-size: 16px; font-weight: 500; color: var(--dim); }
+.card-name { font-size: 36px; font-weight: 700; }
+.btn.card-btn:focus-visible .card-label, .btn.card-btn.is-focused .card-label { color: #333; }
