@@ -114,20 +114,17 @@ html, body {
 .list li span:last-child { font-weight: 600; }
 .list .empty { color: var(--dim); justify-content: flex-start; }
 
-/* Card carousel on the home screen: swipe left/right to switch */
-.cards { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-.chev { font-size: 40px; color: var(--dim); line-height: 1; }
-.card {
-  flex: 1; display: flex; flex-direction: column; gap: 4px;
-  padding: 16px 22px; border: 2px solid var(--line); border-radius: 20px;
+/* Card switcher on the home screen: a focusable row, not a pill */
+.btn.card-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  min-height: 0; padding: 14px 20px; border-radius: 20px; text-align: left;
+  border-color: var(--line); margin-top: 8px;
 }
-.card-brand { font-size: 18px; color: var(--dim); }
-.card-num { font-size: 40px; font-weight: 700; }
-.dots { display: flex; justify-content: center; gap: 10px; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
-.dot.on { background: var(--fg); }
-.slide-l { animation: slideL .25s ease-out; }
-.slide-r { animation: slideR .25s ease-out; }
-@keyframes slideL { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes slideR { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .slide-l, .slide-r { animation: none; } }
+.card-label { font-size: 16px; font-weight: 500; color: var(--dim); }
+.card-name { font-size: 36px; font-weight: 700; }
+.btn.card-btn:focus-visible .card-label, .btn.card-btn.is-focused .card-label { color: #333; }
+
+.card-row { display: flex; gap: 12px; align-items: stretch; margin-top: 8px; }
+.card-row .card-btn { flex: 1; margin-top: 0; }
+.btn.add-btn { width: 84px; padding: 0; border-radius: 20px; font-size: 40px; font-weight: 400; }
+.card-frame { height: 200px; }

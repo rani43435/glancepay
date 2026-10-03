@@ -14,19 +14,35 @@
   <!-- HOME -->
   <section class="screen" id="home" data-screen>
     <div class="brand">Glance Pay</div>
-    <div class="cards" aria-live="polite">
-      <span class="chev" aria-hidden="true">‹</span>
-      <div class="card" id="card">
-        <span class="card-brand" id="cardBrand">Visa</span>
-        <span class="card-num" id="cardNum">•• 42</span>
-      </div>
-      <span class="chev" aria-hidden="true">›</span>
+    <div class="card-row">
+      <button class="card-btn btn" data-action="switchCard" aria-label="Switch card">
+        <span class="card-label">Card · press to switch</span>
+        <span class="card-name" id="cardName">Visa •• 42</span>
+      </button>
+      <button class="btn add-btn" data-go="addcard" aria-label="Add card">+</button>
     </div>
-    <div class="dots" id="cardDots" aria-hidden="true"></div>
     <div class="row">
       <button class="btn primary" data-go="scan" data-autofocus>Scan to pay</button>
       <button class="btn" data-go="history">History</button>
     </div>
+  </section>
+
+  <!-- ADD CARD: look at the physical card (simulated) -->
+  <section class="screen" id="addcard" data-screen hidden>
+    <div class="title">Add a card</div>
+    <div class="sub" id="addMsg">Hold your card in front of you</div>
+    <div class="cam-wrap card-frame"></div>
+    <div class="row">
+      <button class="btn ghost" data-go="home">Back</button>
+    </div>
+  </section>
+
+  <!-- CARD ADDED -->
+  <section class="screen center" id="cardadded" data-screen hidden>
+    <svg class="big-icon ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
+    <div class="title">Card added</div>
+    <div class="sub" id="addedText"></div>
+    <button class="btn primary" data-go="home">Done</button>
   </section>
 
   <!-- SCAN -->

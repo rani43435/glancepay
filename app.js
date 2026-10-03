@@ -10,12 +10,8 @@
 
 const DEMO_CODE = 'glancepay:pay?m=Demo%20Caf%C3%A9&a=3.80&c=EUR&i=Flat%20white';
 
-// Example cards (not real)
-const CARDS = [
-  { brand: 'Visa', num: '•• 42' },
-  { brand: 'Mastercard', num: '•• 17' },
-];
-const cardLabel = (c) => c.brand + ' ' + c.num;
+// Example cards (not real). Adding a card is simulated.
+const CARDS = ['Visa •• 42', 'Mastercard •• 17'];
 
 const state = {
   screen: 'home',
@@ -32,16 +28,18 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 // ---------- navigation between screens ----------
 function show(name) {
   if (state.screen === 'scan' && name !== 'scan') stopCamera();
+  if (state.screen === 'addcard' && name !== 'addcard') clearTimeout(state.addTimer);
   state.screen = name;
   $$('[data-screen]').forEach((s) => { s.hidden = s.id !== name; });
   const first = $('#' + name + ' [data-autofocus]') || $('#' + name + ' .btn');
   if (first) first.focus();
   if (name === 'scan') startCamera();
+  if (name === 'addcard') startAddCard();
   if (name === 'history') renderHistory();
 }
 
 function back() {
-  const map = { scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
+  const map = { addcard: 'home', cardadded: 'home', scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
   if (state.screen === 'confirm') { cancel(); return; }
   if (map[state.screen]) show(map[state.screen]);
 }
@@ -72,7 +70,7 @@ function openConfirm(payment) {
   state.pending = payment;
   $('#cMerchant').textContent = payment.merchant;
   $('#cAmount').textContent = money(payment.amount, payment.currency);
-  $('#cItem').textContent = [payment.item, cardLabel(CARDS[state.card])].filter(Boolean).join(' · ');
+  $('#cItem').textContent = [payment.item, CARDS[state.card]].filter(Boolean).join(' · ');
   show('confirm');
 }
 
@@ -131,7 +129,7 @@ function pay() {
   $('#payingText').textContent = 'Paying ' + money(p.amount, p.currency) + '…';
   show('paying');
   setTimeout(() => {
-    state.history.unshift({ ...p, card: cardLabel(CARDS[state.card]), at: new Date() });
+    state.history.unshift({ ...p, card: CARDS[state.card], at: new Date() });
     $('#doneText').textContent = money(p.amount, p.currency) + ' to ' + p.merchant;
     state.pending = null;
     show('done');
@@ -164,23 +162,24 @@ function renderHistory() {
   });
 }
 
-// Swipe left/right on the home screen to switch cards.
-function switchCard(dir) {
-  state.card = (state.card + dir + CARDS.length) % CARDS.length;
-  renderCard(dir);
+// Simulated: pretend the camera read a card after a moment.
+function startAddCard() {
+  clearTimeout(state.addTimer);
+  state.addTimer = setTimeout(() => {
+    const brand = Math.random() < 0.5 ? 'Visa' : 'Mastercard';
+    const last = String(Math.floor(Math.random() * 90) + 10);
+    const card = brand + ' •• ' + last;
+    CARDS.push(card);
+    state.card = CARDS.length - 1;
+    $('#cardName').textContent = card;
+    $('#addedText').textContent = card;
+    show('cardadded');
+  }, 2500);
 }
 
-function renderCard(dir) {
-  const c = CARDS[state.card];
-  $('#cardBrand').textContent = c.brand;
-  $('#cardNum').textContent = c.num;
-  $('#cardDots').innerHTML = CARDS.map((_, i) => '<span class="dot' + (i === state.card ? ' on' : '') + '"></span>').join('');
-  if (dir) {
-    const el = $('#card');
-    el.classList.remove('slide-l', 'slide-r');
-    void el.offsetWidth; // restart the animation
-    el.classList.add(dir > 0 ? 'slide-l' : 'slide-r');
-  }
+function switchCard() {
+  state.card = (state.card + 1) % CARDS.length;
+  $('#cardName').textContent = CARDS[state.card];
 }
 
 // ---------- input ----------
@@ -190,6 +189,7 @@ document.addEventListener('click', (e) => {
   if (btn.dataset.go) show(btn.dataset.go);
   const action = btn.dataset.action;
   if (action === 'demo') openConfirm(parseCode(DEMO_CODE));
+  if (action === 'switchCard') switchCard();
   if (action === 'pay') pay();
   if (action === 'cancel') cancel();
 });
@@ -200,12 +200,6 @@ document.addEventListener('keydown', (e) => {
   const buttons = $$('#' + state.screen + ' .btn');
   if (!buttons.length) return;
   const i = buttons.indexOf(document.activeElement);
-  // Home: left/right swipes switch the card; up/down move between buttons.
-  if (state.screen === 'home' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-    switchCard(e.key === 'ArrowRight' ? 1 : -1);
-    e.preventDefault();
-    return;
-  }
   if (['ArrowRight', 'ArrowDown'].includes(e.key)) {
     buttons[(i + 1 + buttons.length) % buttons.length].focus();
     e.preventDefault();
@@ -218,5 +212,4 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-renderCard(0);
 show('home');
