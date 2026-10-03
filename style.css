@@ -111,7 +111,6 @@ html, body {
   display: flex; justify-content: space-between;
   font-size: 20px; padding: 14px 0; border-bottom: 1px solid var(--line);
 }
-.list li span:last-child { font-weight: 600; }
 .list .empty { color: var(--dim); justify-content: flex-start; }
 
 /* Card switcher on the home screen: a focusable row, not a pill */
@@ -145,3 +144,14 @@ html, body {
 .card-row .card-btn { flex: 1; margin-top: 0; }
 .btn.add-btn { width: 84px; padding: 0; border-radius: 20px; font-size: 40px; font-weight: 400; }
 .card-frame { height: 200px; }
+
+/* History: one heading per day, time under each payment */
+.list li.day {
+  font-size: 16px; font-weight: 600; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  padding: 18px 0 6px; border-bottom: none;
+}
+.list li.day:first-child { padding-top: 0; }
+.list li .who { display: flex; flex-direction: column; gap: 2px; }
+.list li .time { font-size: 16px; color: var(--dim); font-weight: 400; }
+.list li .amt { font-weight: 600; align-self: center; }

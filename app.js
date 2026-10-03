@@ -157,6 +157,14 @@ function cancel() {
   show('cancelled');
 }
 
+function dayLabel(d) {
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 function renderHistory() {
   const ul = $('#historyList');
   ul.innerHTML = '';
@@ -167,13 +175,30 @@ function renderHistory() {
     ul.appendChild(li);
     return;
   }
+  // Group payments by day (history is newest first), each with its time.
+  let lastDay = null;
   state.history.forEach((h) => {
+    const day = h.at.toDateString();
+    if (day !== lastDay) {
+      const head = document.createElement('li');
+      head.className = 'day';
+      head.textContent = dayLabel(h.at);
+      ul.appendChild(head);
+      lastDay = day;
+    }
     const li = document.createElement('li');
-    const a = document.createElement('span');
-    const b = document.createElement('span');
-    a.textContent = h.merchant;
-    b.textContent = money(h.amount, h.currency);
-    li.append(a, b);
+    const left = document.createElement('span');
+    const name = document.createElement('span');
+    const time = document.createElement('span');
+    const amt = document.createElement('span');
+    left.className = 'who';
+    name.textContent = h.merchant;
+    time.className = 'time';
+    time.textContent = h.at.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    amt.className = 'amt';
+    amt.textContent = money(h.amount, h.currency);
+    left.append(name, time);
+    li.append(left, amt);
     ul.appendChild(li);
   });
 }
