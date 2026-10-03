@@ -24,6 +24,7 @@
         </span>
         <span class="card-name" id="cardName">•• 42</span>
       </button>
+      <button class="btn add-btn" data-go="editcard" aria-label="Edit card">✎</button>
       <button class="btn add-btn" data-go="addcard" aria-label="Add card">+</button>
     </div>
     <div class="row">
@@ -49,9 +50,30 @@
       <span class="card-top"><span class="card-brand">Card</span></span>
       <span class="card-name"></span>
     </div>
+    <label class="field">
+      <span>Card name</span>
+      <input id="newCardName" class="text-in" autocomplete="off" maxlength="20">
+    </label>
     <div class="row">
       <button class="btn primary" data-action="addCard" data-autofocus>Add card</button>
       <button class="btn ghost" data-go="addcard">Retake</button>
+    </div>
+  </section>
+
+  <!-- EDIT CARD: rename or delete the chosen card -->
+  <section class="screen" id="editcard" data-screen hidden>
+    <div class="card-btn preview small" id="editPreview">
+      <span class="card-top"><span class="card-brand">Card</span></span>
+      <span class="card-name"></span>
+    </div>
+    <label class="field">
+      <span>Card name</span>
+      <input id="editCardName" class="text-in" autocomplete="off" maxlength="20">
+    </label>
+    <div class="row">
+      <button class="btn primary" data-action="saveCard" data-autofocus>Save</button>
+      <button class="btn danger" data-action="deleteCard" id="deleteBtn">Delete</button>
+      <button class="btn ghost" data-go="home">Back</button>
     </div>
   </section>
 

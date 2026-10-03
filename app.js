@@ -40,10 +40,11 @@ function show(name) {
   if (name === 'scan') startCamera($('#camMsg'), 'Starting camera…');
   if (name === 'addcard') startCamera($('#addMsg'), 'Hold your card in the frame');
   if (name === 'history') renderHistory();
+  if (name === 'editcard') openEdit();
 }
 
 function back() {
-  const map = { addcard: 'home', cardpreview: 'addcard', scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
+  const map = { editcard: 'home', addcard: 'home', cardpreview: 'addcard', scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
   if (state.screen === 'confirm') { cancel(); return; }
   if (map[state.screen]) show(map[state.screen]);
 }
@@ -271,6 +272,7 @@ function takeCard({ ctx, w, h }, info) {
     fg: colors.fg,
   };
   paintCard($('#previewCard'), state.newCard);
+  $('#newCardName').value = state.newCard.name;
   show('cardpreview');
 }
 
@@ -303,9 +305,38 @@ function mainColors(data) {
 function confirmAddCard() {
   const card = state.newCard;
   if (!card) return;
+  card.name = cleanName($('#newCardName').value) || card.name;
   CARDS.push(card);
   state.card = CARDS.length - 1;
   state.newCard = null;
+  save();
+  renderCard();
+  show('home');
+}
+
+const cleanName = (v) => v.replace(/\s+/g, ' ').trim().slice(0, 20);
+
+// ---------- edit / delete the chosen card ----------
+function openEdit() {
+  const c = CARDS[state.card];
+  paintCard($('#editPreview'), c);
+  $('#editCardName').value = c.name;
+  // Keep at least one card
+  $('#deleteBtn').disabled = CARDS.length <= 1;
+}
+
+function saveCard() {
+  const name = cleanName($('#editCardName').value);
+  if (name) CARDS[state.card].name = name;
+  save();
+  renderCard();
+  show('home');
+}
+
+function deleteCard() {
+  if (CARDS.length <= 1) return;
+  CARDS.splice(state.card, 1);
+  state.card = Math.min(state.card, CARDS.length - 1);
   save();
   renderCard();
   show('home');
@@ -337,6 +368,8 @@ document.addEventListener('click', (e) => {
   if (action === 'demo') openConfirm(parseCode(DEMO_CODE));
   if (action === 'switchCard') switchCard();
   if (action === 'addCard') confirmAddCard();
+  if (action === 'saveCard') saveCard();
+  if (action === 'deleteCard') deleteCard();
   if (action === 'pay') pay();
   if (action === 'cancel') cancel();
 });
@@ -344,9 +377,23 @@ document.addEventListener('click', (e) => {
 // Arrow keys move focus between the buttons on the current screen
 // (spatial navigation fallback for desktop testing).
 document.addEventListener('keydown', (e) => {
-  const buttons = $$('#' + state.screen + ' .btn');
+  const buttons = $$('#' + state.screen + ' .btn:not(:disabled), #' + state.screen + ' input');
   if (!buttons.length) return;
   const i = buttons.indexOf(document.activeElement);
+  // While typing a name: Left/Right/Backspace edit the text; Up/Down/Enter move on.
+  if (e.target.tagName === 'INPUT') {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+      buttons[(i + 1) % buttons.length].focus();
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      buttons[(i - 1 + buttons.length) % buttons.length].focus();
+      e.preventDefault();
+    } else if (e.key === 'Escape') {
+      back();
+      e.preventDefault();
+    }
+    return;
+  }
   if (['ArrowRight', 'ArrowDown'].includes(e.key)) {
     buttons[(i + 1 + buttons.length) % buttons.length].focus();
     e.preventDefault();
@@ -391,6 +438,14 @@ function load() {
       .filter((h) => !isNaN(h.at));
   } catch (e) { /* bad or missing data: start fresh */ }
 }
+
+// Card previews follow the name as it is typed
+$('#newCardName').addEventListener('input', (e) => {
+  $('#previewCard .card-brand').textContent = cleanName(e.target.value) || 'Card';
+});
+$('#editCardName').addEventListener('input', (e) => {
+  $('#editPreview .card-brand').textContent = cleanName(e.target.value) || 'Card';
+});
 
 load();
 renderCard();

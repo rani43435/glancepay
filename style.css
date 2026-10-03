@@ -180,3 +180,16 @@ html, body {
   .cam-wrap::before, .cam-wrap::after { transition: none; }
   .cam-wrap.locked::before, .cam-wrap.locked::after { animation: none; }
 }
+
+/* Card name field (system keyboard, dictation or handwriting on the glasses) */
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 16px; color: var(--dim); }
+.text-in {
+  font: inherit; font-size: 24px; color: var(--fg); background: transparent;
+  border: 2px solid var(--line); border-radius: 16px; padding: 10px 16px;
+}
+.text-in:focus { outline: none; border-color: var(--accent); }
+.btn.danger { color: #FF8A7A; border-color: #6B3A34; }
+.btn.danger:focus-visible { background: #FF8A7A; border-color: #FF8A7A; color: #000; }
+.btn:disabled { opacity: .35; cursor: default; }
+.card-btn.preview.small { min-height: 110px; padding: 16px 20px; }
+.card-row .btn.add-btn { width: 72px; font-size: 32px; }
