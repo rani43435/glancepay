@@ -10,20 +10,13 @@
 
 const DEMO_CODE = 'glancepay:pay?m=Demo%20Caf%C3%A9&a=3.80&c=EUR&i=Flat%20white';
 
-// Example cards (not real). New cards come from test card codes.
-// Card colours. Black is invisible on the additive display, so every
-// colour is a bright accent used for the outline and text.
-const CARD_COLORS = {
-  blue: '#6EA8FF', orange: '#FFAA5C', teal: '#5FD8C8',
-  gold: '#F2C94C', silver: '#D6D9DE', pink: '#FF8FB8',
-};
-const BRAND_COLOR = { Visa: 'blue', Mastercard: 'orange', Amex: 'teal' };
-
+// Cards (examples, not real). Each card has its own two colours, read
+// from the physical card by the camera when it is added.
 const CARDS = [
-  { brand: 'Visa', last: '42', color: 'blue' },
-  { brand: 'Mastercard', last: '17', color: 'orange' },
+  { name: 'Visa', last: '42', bg: '#1F4FD1', fg: '#FFFFFF' },
+  { name: 'Mastercard', last: '17', bg: '#F2994A', fg: '#1A1A1A' },
 ];
-const cardLabel = (c) => c.brand + ' •• ' + c.last;
+const cardLabel = (c) => c.name + (c.last ? ' •• ' + c.last : '');
 
 const state = {
   screen: 'home',
@@ -45,12 +38,12 @@ function show(name) {
   const first = $('#' + name + ' [data-autofocus]') || $('#' + name + ' .btn');
   if (first) first.focus();
   if (name === 'scan') startCamera($('#camMsg'), 'Starting camera…');
-  if (name === 'addcard') startCamera($('#addMsg'), 'Hold your card in front of you');
+  if (name === 'addcard') startCamera($('#addMsg'), 'Hold your card in the frame');
   if (name === 'history') renderHistory();
 }
 
 function back() {
-  const map = { addcard: 'home', cardadded: 'home', scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
+  const map = { addcard: 'home', cardpreview: 'addcard', scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
   if (state.screen === 'confirm') { cancel(); return; }
   if (map[state.screen]) show(map[state.screen]);
 }
@@ -86,7 +79,7 @@ function openConfirm(payment) {
 }
 
 // ---------- camera + QR scanning ----------
-// Card code format (test cards only):  glancepay:card?b=<brand>&l=<last two digits>
+// Optional QR on a test card:  glancepay:card?b=<brand>&l=<last two digits>
 function parseCard(text) {
   const m = /^glancepay:card\?(.*)$/.exec(text);
   if (!m) return null;
@@ -94,9 +87,7 @@ function parseCard(text) {
   const brand = p.get('b');
   const last = (p.get('l') || '').replace(/\D/g, '').slice(-2);
   if (!brand || last.length !== 2) return null;
-  const k = p.get('k');
-  const color = CARD_COLORS[k] ? k : (BRAND_COLOR[brand] || 'silver');
-  return { brand, last, color };
+  return { name: brand, last };
 }
 
 async function startCamera(msg, readyText) {
@@ -127,7 +118,7 @@ function stopCamera() {
 
 function scanLoop() {
   const video = $('#cam');
-  if (!['scan', 'addcard'].includes(state.screen) || !state.stream) return;
+  if (state.screen !== 'scan' || !state.stream) return;
   if (window.jsQR && video.videoWidth) {
     const canvas = scanLoop.canvas || (scanLoop.canvas = document.createElement('canvas'));
     const w = 320;
@@ -138,16 +129,10 @@ function scanLoop() {
     const img = ctx.getImageData(0, 0, w, h);
     const found = window.jsQR(img.data, w, h);
     if (found) {
-      if (state.screen === 'scan') {
-        const payment = parseCode(found.data);
-        if (payment) { openConfirm(payment); return; }
-        state.msg.hidden = false;
-        state.msg.textContent = 'That is not a pay code';
-      } else {
-        const card = parseCard(found.data);
-        if (card) { addCard(card); return; }
-        state.msg.textContent = 'That is not a card';
-      }
+      const payment = parseCode(found.data);
+      if (payment) { openConfirm(payment); return; }
+      state.msg.hidden = false;
+      state.msg.textContent = 'That is not a pay code';
     }
   }
   state.scanTimer = setTimeout(scanLoop, 250);
@@ -193,15 +178,77 @@ function renderHistory() {
   });
 }
 
-// Adds a card only when the camera actually reads a card code.
-function addCard(card) {
-  let i = CARDS.findIndex((c) => c.brand === card.brand && c.last === card.last);
-  if (i === -1) { CARDS.push(card); i = CARDS.length - 1; }
-  else CARDS[i] = card;
-  state.card = i;
+// ---------- add a card: read its colours from the camera ----------
+// Grabs the middle of the camera frame (where the card is held), finds the
+// two main colours, and reads a test-card QR if there is one.
+function captureCard() {
+  const video = $('#cam');
+  if (!state.stream || !video.videoWidth) {
+    state.msg.textContent = 'Camera not ready yet';
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  const w = 320;
+  const h = Math.round(video.videoHeight * (w / video.videoWidth));
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(video, 0, 0, w, h);
+
+  // Centre area, card-shaped (about 60% x 40% of the frame)
+  const cw = Math.round(w * 0.6), ch = Math.round(h * 0.4);
+  const cx = Math.round((w - cw) / 2), cy = Math.round((h - ch) / 2);
+  const colors = mainColors(ctx.getImageData(cx, cy, cw, ch).data);
+
+  let info = null;
+  if (window.jsQR) {
+    const all = ctx.getImageData(0, 0, w, h);
+    const found = window.jsQR(all.data, w, h);
+    if (found) info = parseCard(found.data);
+  }
+  const n = CARDS.length + 1;
+  state.newCard = {
+    name: info ? info.name : 'Card ' + n,
+    last: info ? info.last : '',
+    bg: colors.bg,
+    fg: colors.fg,
+  };
+  paintCard($('#previewCard'), state.newCard);
+  show('cardpreview');
+}
+
+// Most common colour = card background; the next clearly different common
+// colour = print colour. Falls back to white/black for readable text.
+function mainColors(data) {
+  const buckets = new Map();
+  let total = 0;
+  for (let i = 0; i < data.length; i += 4 * 3) { // every 3rd pixel
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const key = (r >> 4) << 8 | (g >> 4) << 4 | (b >> 4);
+    const e = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+    e.n++; e.r += r; e.g += g; e.b += b;
+    buckets.set(key, e);
+    total++;
+  }
+  const list = [...buckets.values()]
+    .map((e) => ({ n: e.n, r: e.r / e.n, g: e.g / e.n, b: e.b / e.n }))
+    .sort((a, b) => b.n - a.n);
+  const dist = (a, b) => Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
+  const first = list[0];
+  const second = list.find((c) => c.n >= total * 0.04 && dist(c, first) > 90);
+  const lum = (c) => (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
+  const hex = (c) => '#' + [c.r, c.g, c.b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+  const fg = second || (lum(first) > 0.55 ? { r: 20, g: 20, b: 20 } : { r: 255, g: 255, b: 255 });
+  return { bg: hex(first), fg: hex(fg) };
+}
+
+function confirmAddCard() {
+  const card = state.newCard;
+  if (!card) return;
+  CARDS.push(card);
+  state.card = CARDS.length - 1;
+  state.newCard = null;
   renderCard();
-  $('#addedText').textContent = cardLabel(card);
-  show('cardadded');
+  show('home');
 }
 
 function switchCard() {
@@ -209,11 +256,15 @@ function switchCard() {
   renderCard();
 }
 
+function paintCard(el, c) {
+  el.style.setProperty('--card-bg', c.bg);
+  el.style.setProperty('--card-fg', c.fg);
+  el.querySelector('.card-brand').textContent = c.name;
+  el.querySelector('.card-name').textContent = c.last ? '•• ' + c.last : '';
+}
+
 function renderCard() {
-  const c = CARDS[state.card];
-  $('#cardBrand').textContent = c.brand;
-  $('#cardName').textContent = '•• ' + c.last;
-  $('.card-btn').style.setProperty('--card', CARD_COLORS[c.color]);
+  paintCard($('.card-btn'), CARDS[state.card]);
 }
 
 // ---------- input ----------
@@ -224,6 +275,8 @@ document.addEventListener('click', (e) => {
   const action = btn.dataset.action;
   if (action === 'demo') openConfirm(parseCode(DEMO_CODE));
   if (action === 'switchCard') switchCard();
+  if (action === 'capture') captureCard();
+  if (action === 'addCard') confirmAddCard();
   if (action === 'pay') pay();
   if (action === 'cancel') cancel();
 });

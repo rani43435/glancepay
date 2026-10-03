@@ -120,14 +120,26 @@ html, body {
   min-height: 0; padding: 14px 20px; border-radius: 20px; text-align: left;
   border-color: var(--line); margin-top: 8px;
 }
-.btn.card-btn { --card: var(--fg); border-color: var(--card); background: color-mix(in srgb, var(--card) 12%, transparent); }
+/* A card is drawn in its own two colours (read from the real card). */
+.card-btn {
+  --card-bg: #1F4FD1; --card-fg: #FFFFFF;
+  background: var(--card-bg); color: var(--card-fg);
+  border: 2px solid color-mix(in srgb, var(--card-fg) 35%, transparent);
+}
+.btn.card-btn { background: var(--card-bg); color: var(--card-fg); border-color: color-mix(in srgb, var(--card-fg) 35%, transparent); }
 .card-top { display: flex; justify-content: space-between; width: 100%; align-items: baseline; }
-.card-brand { font-size: 20px; font-weight: 700; color: var(--card); }
-.card-hint { font-size: 15px; font-weight: 500; color: var(--dim); }
-.card-name { font-size: 36px; font-weight: 700; color: var(--card); }
-.btn.card-btn:focus-visible, .btn.card-btn.is-focused { background: var(--card); border-color: var(--card); }
-.btn.card-btn:focus-visible :is(.card-brand, .card-name, .card-hint),
-.btn.card-btn.is-focused :is(.card-brand, .card-name, .card-hint) { color: #000; }
+.card-brand { font-size: 20px; font-weight: 700; color: var(--card-fg); }
+.card-hint { font-size: 15px; font-weight: 500; color: var(--card-fg); opacity: .7; }
+.card-name { font-size: 36px; font-weight: 700; color: var(--card-fg); min-height: 1.2em; }
+/* Focus: keep the card's colours, add a bright ring */
+.btn.card-btn:focus-visible, .btn.card-btn.is-focused {
+  background: var(--card-bg); color: var(--card-fg);
+  outline: 3px solid #fff; outline-offset: 4px;
+}
+.card-btn.preview {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 22px 24px; border-radius: 20px; min-height: 150px; justify-content: space-between;
+}
 
 .card-row { display: flex; gap: 12px; align-items: stretch; margin-top: 8px; }
 .card-row .card-btn { flex: 1; margin-top: 0; }

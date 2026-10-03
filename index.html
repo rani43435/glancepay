@@ -32,22 +32,28 @@
     </div>
   </section>
 
-  <!-- ADD CARD: look at the physical card (simulated) -->
+  <!-- ADD CARD: hold the real card in the frame, then Capture -->
   <section class="screen" id="addcard" data-screen hidden>
     <div class="title">Add a card</div>
-    <div class="sub" id="addMsg">Hold your card in front of you</div>
+    <div class="sub" id="addMsg">Hold your card in the frame</div>
     <div class="cam-wrap card-frame"></div>
     <div class="row">
+      <button class="btn primary" data-action="capture" data-autofocus>Capture</button>
       <button class="btn ghost" data-go="home">Back</button>
     </div>
   </section>
 
-  <!-- CARD ADDED -->
-  <section class="screen center" id="cardadded" data-screen hidden>
-    <svg class="big-icon ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
-    <div class="title">Card added</div>
-    <div class="sub" id="addedText"></div>
-    <button class="btn primary" data-go="home">Done</button>
+  <!-- CARD PREVIEW: the card drawn in the colours read from the real card -->
+  <section class="screen" id="cardpreview" data-screen hidden>
+    <div class="title">Your card</div>
+    <div class="card-btn preview" id="previewCard">
+      <span class="card-top"><span class="card-brand">Card</span></span>
+      <span class="card-name"></span>
+    </div>
+    <div class="row">
+      <button class="btn primary" data-action="addCard" data-autofocus>Add card</button>
+      <button class="btn ghost" data-go="addcard">Retake</button>
+    </div>
   </section>
 
   <!-- SCAN -->
