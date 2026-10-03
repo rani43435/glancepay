@@ -143,26 +143,43 @@ function stopCamera() {
   if (state.stream) { state.stream.getTracks().forEach((t) => t.stop()); state.stream = null; }
 }
 
-function scanLoop() {
+// QR reading runs in a worker (started on first use), so the main thread
+// only grabs a small frame now and then.
+let qrWorker = null;
+let qrSeq = 0;
+const qrWaiting = new Map();
+function decodeQR(img) {
+  if (!qrWorker) {
+    qrWorker = new Worker('qr-worker.js?v=20261003-5');
+    qrWorker.onmessage = (e) => {
+      const done = qrWaiting.get(e.data.id);
+      qrWaiting.delete(e.data.id);
+      if (done) done(e.data.text);
+    };
+    qrWorker.onerror = () => { qrWaiting.forEach((done) => done(null)); qrWaiting.clear(); };
+  }
+  return new Promise((resolve) => {
+    const id = ++qrSeq;
+    qrWaiting.set(id, resolve);
+    qrWorker.postMessage({ id, data: img.data.buffer, w: img.width, h: img.height }, [img.data.buffer]);
+  });
+}
+
+async function scanLoop() {
   const video = $('#cam');
   if (state.screen !== 'scan' || !state.stream) return;
-  if (window.jsQR && video.videoWidth) {
-    const canvas = scanLoop.canvas || (scanLoop.canvas = document.createElement('canvas'));
-    const w = 320;
-    const h = Math.round(video.videoHeight * (w / video.videoWidth));
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0, w, h);
-    const img = ctx.getImageData(0, 0, w, h);
-    const found = window.jsQR(img.data, w, h);
-    if (found) {
-      const payment = parseCode(found.data);
+  if (video.videoWidth) {
+    const { ctx, w, h } = grabFrame(240);
+    const text = await decodeQR(ctx.getImageData(0, 0, w, h));
+    if (state.screen !== 'scan' || !state.stream) return;
+    if (text) {
+      const payment = parseCode(text);
       if (payment) { lockOn('#scan .cam-wrap', () => openConfirm(payment)); return; }
       state.msg.hidden = false;
       state.msg.textContent = 'That is not a pay code';
     }
   }
-  state.scanTimer = setTimeout(scanLoop, 250);
+  state.scanTimer = setTimeout(scanLoop, 300);
 }
 
 // Found something: the scan corners snap in and a check pops, then move on.
@@ -243,10 +260,9 @@ function renderHistory() {
 // middle of the frame with the edges: when the middle is one clear colour
 // that differs from the background, and stays that way for about a second,
 // the card is taken. A test-card QR is taken straight away.
-function grabFrame() {
+function grabFrame(w = 320) {
   const video = $('#cam');
   const canvas = grabFrame.canvas || (grabFrame.canvas = document.createElement('canvas'));
-  const w = 320;
   const h = Math.round(video.videoHeight * (w / video.videoWidth));
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -254,19 +270,12 @@ function grabFrame() {
   return { ctx, w, h };
 }
 
-function cardLoop() {
+async function cardLoop() {
   const video = $('#cam');
   if (state.screen !== 'addcard' || !state.stream) return;
   if (video.videoWidth) {
     const f = grabFrame();
     const { ctx, w, h } = f;
-
-    let info = null;
-    if (window.jsQR) {
-      const found = window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
-      if (found) info = parseCard(found.data);
-    }
-    if (info) { lockOn('#addcard .cam-wrap', () => takeCard(f, info)); return; }
 
     const cw = Math.round(w * 0.6), ch = Math.round(h * 0.4);
     const centre = mainColors(ctx.getImageData(Math.round((w - cw) / 2), Math.round((h - ch) / 2), cw, ch).data);
@@ -280,9 +289,15 @@ function cardLoop() {
     }
     state.candidate = looksLikeCard ? centre.bgRgb : null;
     state.msg.textContent = state.steady > 0 ? 'Hold still…' : 'Hold your card in the frame';
-    if (state.steady >= 4) { lockOn('#addcard .cam-wrap', () => takeCard(f, null)); return; }
+    if (state.steady >= 4) {
+      // Before taking it, check for a test-card QR (gives brand and digits)
+      const text = await decodeQR(ctx.getImageData(0, 0, w, h));
+      if (state.screen !== 'addcard') return;
+      lockOn('#addcard .cam-wrap', () => takeCard(f, text ? parseCard(text) : null));
+      return;
+    }
   }
-  state.scanTimer = setTimeout(cardLoop, 250);
+  state.scanTimer = setTimeout(cardLoop, 300);
 }
 
 function takeCard({ ctx, w, h }, info) {
