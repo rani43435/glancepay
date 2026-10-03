@@ -75,7 +75,7 @@ async function startCamera() {
   msg.textContent = 'Starting camera…';
   msg.hidden = false;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    msg.textContent = 'No camera here. Use the demo code.';
+    msg.textContent = 'No camera available';
     return;
   }
   try {
@@ -85,7 +85,7 @@ async function startCamera() {
     msg.hidden = true;
     scanLoop();
   } catch (e) {
-    msg.textContent = 'Camera not available. Use the demo code.';
+    msg.textContent = 'Camera not available';
   }
 }
 
