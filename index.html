@@ -14,10 +14,15 @@
   <!-- HOME -->
   <section class="screen" id="home" data-screen>
     <div class="brand">Glance Pay</div>
-    <button class="card-btn btn" data-action="switchCard" aria-label="Switch card">
-      <span class="card-label">Card · press to switch</span>
-      <span class="card-name" id="cardName">Visa •• 42</span>
-    </button>
+    <div class="cards" aria-live="polite">
+      <span class="chev" aria-hidden="true">‹</span>
+      <div class="card" id="card">
+        <span class="card-brand" id="cardBrand">Visa</span>
+        <span class="card-num" id="cardNum">•• 42</span>
+      </div>
+      <span class="chev" aria-hidden="true">›</span>
+    </div>
+    <div class="dots" id="cardDots" aria-hidden="true"></div>
     <div class="row">
       <button class="btn primary" data-go="scan" data-autofocus>Scan to pay</button>
       <button class="btn" data-go="history">History</button>
