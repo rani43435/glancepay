@@ -43,10 +43,36 @@ function show(name) {
   if (name === 'editcard') openEdit();
 }
 
+// ---------- browser history ----------
+// Every screen is a history entry, so the glasses' own Back works.
+// Going Home unwinds back to the first entry; result screens (Paid,
+// Cancelled) replace the screen before them so Back never re-opens a payment.
+let depth = 0;
+const REPLACE = ['done', 'cancelled'];
+
+function go(name) {
+  if (name === state.screen) return;
+  if (name === 'home') {
+    if (depth > 0) { history.go(-depth); return; } // popstate shows home
+    history.replaceState({ screen: 'home', depth: 0 }, '');
+  } else if (REPLACE.includes(name)) {
+    history.replaceState({ screen: name, depth }, '');
+  } else {
+    depth++;
+    history.pushState({ screen: name, depth }, '');
+  }
+  show(name);
+}
+
+window.addEventListener('popstate', (e) => {
+  const s = e.state || { screen: 'home', depth: 0 };
+  depth = s.depth || 0;
+  if (state.screen === 'confirm') state.pending = null;
+  show(s.screen);
+});
+
 function back() {
-  const map = { editcard: 'home', addcard: 'home', cardpreview: 'addcard', scan: 'home', history: 'home', confirm: 'cancelled', done: 'home', cancelled: 'home' };
-  if (state.screen === 'confirm') { cancel(); return; }
-  if (map[state.screen]) show(map[state.screen]);
+  if (depth > 0) history.back();
 }
 
 // ---------- pay code parsing ----------
@@ -76,7 +102,7 @@ function openConfirm(payment) {
   $('#cMerchant').textContent = payment.merchant;
   $('#cAmount').textContent = money(payment.amount, payment.currency);
   $('#cItem').textContent = [payment.item, cardLabel(CARDS[state.card])].filter(Boolean).join(' · ');
-  show('confirm');
+  go('confirm');
 }
 
 // ---------- camera + QR scanning ----------
@@ -158,12 +184,12 @@ function pay() {
   save();
   $('#doneText').textContent = money(p.amount, p.currency) + ' to ' + p.merchant;
   state.pending = null;
-  show('done');
+  go('done');
 }
 
 function cancel() {
   state.pending = null;
-  show('cancelled');
+  go('cancelled');
 }
 
 function dayLabel(d) {
@@ -273,7 +299,7 @@ function takeCard({ ctx, w, h }, info) {
   };
   paintCard($('#previewCard'), state.newCard);
   $('#newCardName').value = state.newCard.name;
-  show('cardpreview');
+  go('cardpreview');
 }
 
 const colorDist = (a, b) => Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
@@ -311,7 +337,7 @@ function confirmAddCard() {
   state.newCard = null;
   save();
   renderCard();
-  show('home');
+  go('home');
 }
 
 const cleanName = (v) => v.replace(/\s+/g, ' ').trim().slice(0, 20);
@@ -330,7 +356,7 @@ function saveCard() {
   if (name) CARDS[state.card].name = name;
   save();
   renderCard();
-  show('home');
+  go('home');
 }
 
 function deleteCard() {
@@ -339,7 +365,7 @@ function deleteCard() {
   state.card = Math.min(state.card, CARDS.length - 1);
   save();
   renderCard();
-  show('home');
+  go('home');
 }
 
 function switchCard() {
@@ -363,7 +389,7 @@ function renderCard() {
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btn');
   if (!btn) return;
-  if (btn.dataset.go) show(btn.dataset.go);
+  if (btn.dataset.go) go(btn.dataset.go);
   const action = btn.dataset.action;
   if (action === 'demo') openConfirm(parseCode(DEMO_CODE));
   if (action === 'switchCard') switchCard();
@@ -449,4 +475,5 @@ $('#editCardName').addEventListener('input', (e) => {
 
 load();
 renderCard();
+history.replaceState({ screen: 'home', depth: 0 }, '');
 show('home');
