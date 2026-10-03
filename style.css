@@ -193,14 +193,13 @@ html, body {
 .btn:disabled { opacity: .35; cursor: default; }
 .card-btn.preview.small { min-height: 110px; padding: 16px 20px; }
 
-/* Edit and add: one small joined control beside the card */
-.card-tools {
-  display: flex; flex-direction: column; width: 46px; flex: none;
-  border: 2px solid var(--line); border-radius: 14px; overflow: hidden;
-}
+/* Edit and add: two quiet round icon buttons beside the card */
+.card-tools { display: flex; flex-direction: column; justify-content: center; gap: 10px; flex: none; }
 .btn.tool {
-  flex: 1; min-height: 0; padding: 0; border: none; border-radius: 0;
-  font-size: 20px; font-weight: 500; color: var(--dim);
+  width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%;
+  border: 1.5px solid #4A4D54; background: transparent;
+  display: flex; align-items: center; justify-content: center;
 }
-.btn.tool + .btn.tool { border-top: 2px solid var(--line); }
-.btn.tool:focus-visible { background: var(--fg); color: #000; }
+.btn.tool svg { width: 18px; height: 18px; fill: none; stroke: #C9CBD0; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.btn.tool:focus-visible { background: var(--fg); border-color: var(--fg); }
+.btn.tool:focus-visible svg { stroke: #000; }
