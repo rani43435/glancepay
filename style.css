@@ -192,4 +192,15 @@ html, body {
 .btn.danger:focus-visible { background: #FF8A7A; border-color: #FF8A7A; color: #000; }
 .btn:disabled { opacity: .35; cursor: default; }
 .card-btn.preview.small { min-height: 110px; padding: 16px 20px; }
-.card-row .btn.add-btn { width: 72px; font-size: 32px; }
+
+/* Edit and add: one small joined control beside the card */
+.card-tools {
+  display: flex; flex-direction: column; width: 46px; flex: none;
+  border: 2px solid var(--line); border-radius: 14px; overflow: hidden;
+}
+.btn.tool {
+  flex: 1; min-height: 0; padding: 0; border: none; border-radius: 0;
+  font-size: 20px; font-weight: 500; color: var(--dim);
+}
+.btn.tool + .btn.tool { border-top: 2px solid var(--line); }
+.btn.tool:focus-visible { background: var(--fg); color: #000; }
