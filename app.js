@@ -150,7 +150,7 @@ let qrSeq = 0;
 const qrWaiting = new Map();
 function decodeQR(img) {
   if (!qrWorker) {
-    qrWorker = new Worker('qr-worker.js?v=20261003-6');
+    qrWorker = new Worker('qr-worker.js?v=20261003-7');
     qrWorker.onmessage = (e) => {
       const done = qrWaiting.get(e.data.id);
       qrWaiting.delete(e.data.id);
@@ -494,6 +494,10 @@ if ('serviceWorker' in navigator) {
   if ('requestIdleCallback' in window) requestIdleCallback(reg, { timeout: 3000 });
   else setTimeout(reg, 2000);
 }
+
+// Screen transitions start after the first input, not at launch
+['keydown', 'pointerdown'].forEach((t) =>
+  addEventListener(t, () => document.body.classList.add('ready'), { once: true, capture: true }));
 
 load();
 renderCard();

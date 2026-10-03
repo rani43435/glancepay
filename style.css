@@ -151,7 +151,8 @@ html, body {
 .list li .amt { font-weight: 600; align-self: center; }
 
 /* Screens slide in gently instead of jumping like a reload */
-.screen:not([hidden]) { animation: screenIn .28s ease-out; }
+/* Only after the first press, so start-up does no animation work */
+body.ready .screen:not([hidden]) { animation: screenIn .28s ease-out; }
 @keyframes screenIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 /* Code / card found: corners snap inward, then a check pops */
@@ -170,7 +171,7 @@ html, body {
 @keyframes checkPop { to { opacity: 1; transform: scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen:not([hidden]), .cam-wrap.locked .lock-check { will-change: transform, opacity; animation: none; opacity: 1; transform: none; }
+  body.ready .screen:not([hidden]), .cam-wrap.locked .lock-check { will-change: transform, opacity; animation: none; opacity: 1; transform: none; }
   .cam-wrap::before, .cam-wrap::after { transition: none; }
   .cam-wrap.locked::before, .cam-wrap.locked::after { animation: none; }
 }
