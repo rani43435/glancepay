@@ -10,6 +10,8 @@
 </head>
 <body>
 <main id="app">
+  <!-- Camera feed: invisible (the wearer already sees the world), used for scanning -->
+  <video id="cam" playsinline muted></video>
 
   <!-- HOME -->
   <section class="screen" id="home" data-screen>
@@ -49,7 +51,6 @@
   <section class="screen" id="scan" data-screen hidden>
     <div class="title">Look at a pay code</div>
     <div class="cam-wrap">
-      <video id="cam" playsinline muted></video>
       <div class="cam-msg" id="camMsg">Starting camera…</div>
     </div>
     <div class="row">

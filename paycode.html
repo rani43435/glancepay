@@ -3,38 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Glance Pay – demo pay code</title>
+<title>Glance Pay – test codes</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
-  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; font-family: system-ui, sans-serif; background: #f2f2ef; color: #111; }
-  #qr img { width: 320px; height: 320px; image-rendering: pixelated; }
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; box-sizing: border-box; font-family: system-ui, sans-serif; background: #f2f2ef; color: #111; text-align: center; }
+  h1 { margin: 0; font-size: 24px; }
+  p { margin: 0; color: #444; }
+  #qr img { width: min(320px, 80vw); height: auto; image-rendering: pixelated; }
+  .tabs { display: flex; gap: 8px; }
+  .tabs button { font: inherit; padding: 10px 16px; border-radius: 999px; border: 1px solid #111; background: transparent; color: #111; cursor: pointer; }
+  .tabs button[aria-pressed="true"] { background: #111; color: #fff; }
   form { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  input { font: inherit; padding: 8px 10px; border: 1px solid #999; border-radius: 8px; }
-  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: none; background: #111; color: #fff; cursor: pointer; }
+  form[hidden] { display: none; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; text-align: left; }
+  input, select { font: inherit; padding: 8px 10px; border: 1px solid #999; border-radius: 8px; width: 140px; background: #fff; }
+  form button { font: inherit; padding: 8px 14px; border-radius: 8px; border: none; background: #111; color: #fff; cursor: pointer; align-self: flex-end; }
 </style>
 </head>
 <body>
-  <h1 style="margin:0">Demo pay code</h1>
-  <p style="margin:0">Show this to the camera in Glance Pay.</p>
+  <div class="tabs">
+    <button type="button" id="tPay" aria-pressed="true">Pay code</button>
+    <button type="button" id="tCard" aria-pressed="false">Test card</button>
+  </div>
+  <h1 id="h">Pay code</h1>
+  <p id="hint">Scan this from “Scan to pay”.</p>
   <div id="qr"></div>
-  <form id="f">
-    <label>Shop <input id="m" value="Demo Café"></label>
-    <label>Amount <input id="a" value="3.80" size="6"></label>
-    <label>Item <input id="i" value="Flat white"></label>
+
+  <form id="fPay">
+    <label>Shop<input id="m" value="Demo Café"></label>
+    <label>Amount (€)<input id="a" value="3.80" inputmode="decimal"></label>
+    <label>Item<input id="i" value="Flat white"></label>
     <button>Update</button>
   </form>
+
+  <form id="fCard" hidden>
+    <label>Brand
+      <select id="b">
+        <option>Visa</option>
+        <option>Mastercard</option>
+        <option>Amex</option>
+      </select>
+    </label>
+    <label>Last 2 digits<input id="l" value="08" maxlength="2" inputmode="numeric"></label>
+    <button>Update</button>
+  </form>
+
 <script>
+  let mode = 'pay';
+  const $ = (id) => document.getElementById(id);
+
+  function setMode(m) {
+    mode = m;
+    $('tPay').setAttribute('aria-pressed', m === 'pay');
+    $('tCard').setAttribute('aria-pressed', m === 'card');
+    $('fPay').hidden = m !== 'pay';
+    $('fCard').hidden = m !== 'card';
+    $('h').textContent = m === 'pay' ? 'Pay code' : 'Test card';
+    $('hint').textContent = m === 'pay'
+      ? 'Scan this from “Scan to pay”.'
+      : 'Scan this from the + button to add a card. Not a real card.';
+    draw();
+  }
+
   function draw() {
-    const m = document.getElementById('m').value;
-    const a = document.getElementById('a').value;
-    const i = document.getElementById('i').value;
-    const text = 'glancepay:pay?m=' + encodeURIComponent(m) + '&a=' + encodeURIComponent(a) + '&c=EUR&i=' + encodeURIComponent(i);
+    const enc = encodeURIComponent;
+    const text = mode === 'pay'
+      ? 'glancepay:pay?m=' + enc($('m').value) + '&a=' + enc($('a').value.replace(',', '.')) + '&c=EUR&i=' + enc($('i').value)
+      : 'glancepay:card?b=' + enc($('b').value) + '&l=' + enc($('l').value);
     const qr = qrcode(0, 'M');
     qr.addData(text);
     qr.make();
-    document.getElementById('qr').innerHTML = qr.createImgTag(8, 16);
+    $('qr').innerHTML = qr.createImgTag(8, 16);
   }
-  document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); draw(); });
+
+  $('tPay').addEventListener('click', () => setMode('pay'));
+  $('tCard').addEventListener('click', () => setMode('card'));
+  $('fPay').addEventListener('submit', (e) => { e.preventDefault(); draw(); });
+  $('fCard').addEventListener('submit', (e) => { e.preventDefault(); draw(); });
   draw();
 </script>
 </body>

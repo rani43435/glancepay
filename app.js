@@ -10,7 +10,7 @@
 
 const DEMO_CODE = 'glancepay:pay?m=Demo%20Caf%C3%A9&a=3.80&c=EUR&i=Flat%20white';
 
-// Example cards (not real). Adding a card is simulated.
+// Example cards (not real). New cards come from test card codes.
 const CARDS = ['Visa •• 42', 'Mastercard •• 17'];
 
 const state = {
@@ -27,14 +27,13 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 // ---------- navigation between screens ----------
 function show(name) {
-  if (state.screen === 'scan' && name !== 'scan') stopCamera();
-  if (state.screen === 'addcard' && name !== 'addcard') clearTimeout(state.addTimer);
+  if (['scan', 'addcard'].includes(state.screen) && name !== state.screen) stopCamera();
   state.screen = name;
   $$('[data-screen]').forEach((s) => { s.hidden = s.id !== name; });
   const first = $('#' + name + ' [data-autofocus]') || $('#' + name + ' .btn');
   if (first) first.focus();
-  if (name === 'scan') startCamera();
-  if (name === 'addcard') startAddCard();
+  if (name === 'scan') startCamera($('#camMsg'), 'Starting camera…');
+  if (name === 'addcard') startCamera($('#addMsg'), 'Hold your card in front of you');
   if (name === 'history') renderHistory();
 }
 
@@ -75,9 +74,20 @@ function openConfirm(payment) {
 }
 
 // ---------- camera + QR scanning ----------
-async function startCamera() {
-  const msg = $('#camMsg');
+// Card code format (test cards only):  glancepay:card?b=<brand>&l=<last two digits>
+function parseCard(text) {
+  const m = /^glancepay:card\?(.*)$/.exec(text);
+  if (!m) return null;
+  const p = new URLSearchParams(m[1]);
+  const brand = p.get('b');
+  const last = (p.get('l') || '').replace(/\D/g, '').slice(-2);
+  if (!brand || last.length !== 2) return null;
+  return brand + ' •• ' + last;
+}
+
+async function startCamera(msg, readyText) {
   const video = $('#cam');
+  state.msg = msg;
   msg.textContent = 'Starting camera…';
   msg.hidden = false;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -88,7 +98,8 @@ async function startCamera() {
     state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     video.srcObject = state.stream;
     await video.play();
-    msg.hidden = true;
+    if (readyText === 'Starting camera…') msg.hidden = true;
+    else msg.textContent = readyText;
     scanLoop();
   } catch (e) {
     msg.textContent = 'Camera not available';
@@ -102,7 +113,7 @@ function stopCamera() {
 
 function scanLoop() {
   const video = $('#cam');
-  if (state.screen !== 'scan' || !state.stream) return;
+  if (!['scan', 'addcard'].includes(state.screen) || !state.stream) return;
   if (window.jsQR && video.videoWidth) {
     const canvas = scanLoop.canvas || (scanLoop.canvas = document.createElement('canvas'));
     const w = 320;
@@ -113,10 +124,16 @@ function scanLoop() {
     const img = ctx.getImageData(0, 0, w, h);
     const found = window.jsQR(img.data, w, h);
     if (found) {
-      const payment = parseCode(found.data);
-      if (payment) { openConfirm(payment); return; }
-      $('#camMsg').hidden = false;
-      $('#camMsg').textContent = 'That is not a pay code';
+      if (state.screen === 'scan') {
+        const payment = parseCode(found.data);
+        if (payment) { openConfirm(payment); return; }
+        state.msg.hidden = false;
+        state.msg.textContent = 'That is not a pay code';
+      } else {
+        const card = parseCard(found.data);
+        if (card) { addCard(card); return; }
+        state.msg.textContent = 'That is not a card';
+      }
     }
   }
   state.scanTimer = setTimeout(scanLoop, 250);
@@ -162,19 +179,13 @@ function renderHistory() {
   });
 }
 
-// Simulated: pretend the camera read a card after a moment.
-function startAddCard() {
-  clearTimeout(state.addTimer);
-  state.addTimer = setTimeout(() => {
-    const brand = Math.random() < 0.5 ? 'Visa' : 'Mastercard';
-    const last = String(Math.floor(Math.random() * 90) + 10);
-    const card = brand + ' •• ' + last;
-    CARDS.push(card);
-    state.card = CARDS.length - 1;
-    $('#cardName').textContent = card;
-    $('#addedText').textContent = card;
-    show('cardadded');
-  }, 2500);
+// Adds a card only when the camera actually reads a card code.
+function addCard(card) {
+  if (!CARDS.includes(card)) CARDS.push(card);
+  state.card = CARDS.indexOf(card);
+  $('#cardName').textContent = card;
+  $('#addedText').textContent = card;
+  show('cardadded');
 }
 
 function switchCard() {
