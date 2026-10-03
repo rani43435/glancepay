@@ -113,3 +113,6 @@ html, body {
 }
 .list li span:last-child { font-weight: 600; }
 .list .empty { color: var(--dim); justify-content: flex-start; }
+
+.amount.in { color: var(--accent); }
+.list li span.in { color: var(--accent); }

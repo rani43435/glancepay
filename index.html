@@ -17,14 +17,14 @@
     <div class="balance-label">Card</div>
     <div class="balance">Visa •• 42</div>
     <div class="row">
-      <button class="btn primary" data-go="scan">Scan to pay</button>
+      <button class="btn primary" data-go="scan">Scan code</button>
       <button class="btn" data-go="history">History</button>
     </div>
   </section>
 
   <!-- SCAN -->
   <section class="screen" id="scan" data-screen hidden>
-    <div class="title">Look at a pay code</div>
+    <div class="title">Look at a code</div>
     <div class="cam-wrap">
       <video id="cam" playsinline muted></video>
       <div class="cam-msg" id="camMsg">Starting camera…</div>
@@ -43,6 +43,25 @@
       <button class="btn primary" data-action="pay">Pay</button>
       <button class="btn ghost" data-action="cancel">Cancel</button>
     </div>
+  </section>
+
+  <!-- ACCEPT money a friend is sending -->
+  <section class="screen" id="accept" data-screen hidden>
+    <div class="merchant" id="aFrom">—</div>
+    <div class="amount in" id="aAmount">—</div>
+    <div class="item" id="aNote"></div>
+    <div class="row">
+      <button class="btn primary" data-action="accept">Accept</button>
+      <button class="btn ghost" data-action="decline">Decline</button>
+    </div>
+  </section>
+
+  <!-- RECEIVED -->
+  <section class="screen center" id="received" data-screen hidden>
+    <svg class="big-icon ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v10M7.5 12.5L12 17l4.5-4.5"/></svg>
+    <div class="title">Received</div>
+    <div class="sub" id="receivedText"></div>
+    <button class="btn primary" data-go="home">Done</button>
   </section>
 
   <!-- PAYING -->
