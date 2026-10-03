@@ -136,12 +136,6 @@ function cancel() {
 }
 
 function renderHistory() {
-  const today = new Date().toDateString();
-  const spent = state.history
-    .filter((h) => h.at.toDateString() === today)
-    .reduce((sum, h) => sum + h.amount, 0);
-  $('#todayTotal').textContent = money(spent, 'EUR');
-
   const ul = $('#historyList');
   ul.innerHTML = '';
   if (!state.history.length) {

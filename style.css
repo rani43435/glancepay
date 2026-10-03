@@ -113,11 +113,3 @@ html, body {
 }
 .list li span:last-child { font-weight: 600; }
 .list .empty { color: var(--dim); justify-content: flex-start; }
-
-.today {
-  display: flex; justify-content: space-between; align-items: baseline;
-  padding: 16px 20px; border: 2px solid var(--line); border-radius: 20px;
-}
-.today-label { font-size: 20px; color: var(--dim); }
-.today-total { font-size: 36px; font-weight: 700; }
-.list { max-height: 220px; }
