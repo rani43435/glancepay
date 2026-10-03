@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "Glance Pay",
+  "description": "Look at a pay code and pinch to pay. Prototype: payments are simulated.",
+  "appearance": {
+    "theme_color": "#7FE3B0",
+    "icon": {
+      "src": "../icons/app.png",
+      "type": "monochrome"
+    }
+  }
+}

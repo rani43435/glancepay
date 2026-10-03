@@ -128,7 +128,7 @@ html, body {
 .btn.card-btn { background: var(--card-bg); color: var(--card-fg); border-color: color-mix(in srgb, var(--card-fg) 35%, transparent); }
 .card-top { display: flex; justify-content: space-between; width: 100%; align-items: baseline; }
 .card-brand { font-size: 20px; font-weight: 700; color: var(--card-fg); }
-.card-hint { font-size: 15px; font-weight: 500; color: var(--card-fg); opacity: .7; }
+.card-hint { font-size: 18px; font-weight: 500; color: var(--card-fg); opacity: .7; }
 .card-name { font-size: 36px; font-weight: 700; color: var(--card-fg); min-height: 1.2em; }
 /* Focus: keep the card's colours, add a bright ring */
 .btn.card-btn:focus-visible, .btn.card-btn.is-focused {
@@ -147,13 +147,13 @@ html, body {
 
 /* History: one heading per day, time under each payment */
 .list li.day {
-  font-size: 16px; font-weight: 600; color: var(--accent);
+  font-size: 18px; font-weight: 600; color: var(--accent);
   text-transform: uppercase; letter-spacing: 1.5px;
   padding: 18px 0 6px; border-bottom: none;
 }
 .list li.day:first-child { padding-top: 0; }
 .list li .who { display: flex; flex-direction: column; gap: 2px; }
-.list li .time { font-size: 16px; color: var(--dim); font-weight: 400; }
+.list li .time { font-size: 18px; color: var(--dim); font-weight: 400; }
 .list li .amt { font-weight: 600; align-self: center; }
 
 /* Screens slide in gently instead of jumping like a reload */
@@ -182,7 +182,7 @@ html, body {
 }
 
 /* Card name field (system keyboard, dictation or handwriting on the glasses) */
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 16px; color: var(--dim); }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 18px; color: var(--dim); }
 .text-in {
   font: inherit; font-size: 24px; color: var(--fg); background: transparent;
   border: 2px solid var(--line); border-radius: 16px; padding: 10px 16px;
