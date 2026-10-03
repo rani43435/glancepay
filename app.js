@@ -153,14 +153,10 @@ function lockOn(selector, next) {
 function pay() {
   const p = state.pending;
   if (!p) return;
-  $('#payingText').textContent = 'Paying ' + money(p.amount, p.currency) + '…';
-  show('paying');
-  setTimeout(() => {
-    state.history.unshift({ ...p, card: cardLabel(CARDS[state.card]), at: new Date() });
-    $('#doneText').textContent = money(p.amount, p.currency) + ' to ' + p.merchant;
-    state.pending = null;
-    show('done');
-  }, 1400);
+  state.history.unshift({ ...p, card: cardLabel(CARDS[state.card]), at: new Date() });
+  $('#doneText').textContent = money(p.amount, p.currency) + ' to ' + p.merchant;
+  state.pending = null;
+  show('done');
 }
 
 function cancel() {
