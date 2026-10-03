@@ -154,6 +154,7 @@ function pay() {
   const p = state.pending;
   if (!p) return;
   state.history.unshift({ ...p, card: cardLabel(CARDS[state.card]), at: new Date() });
+  save();
   $('#doneText').textContent = money(p.amount, p.currency) + ' to ' + p.merchant;
   state.pending = null;
   show('done');
@@ -305,6 +306,7 @@ function confirmAddCard() {
   CARDS.push(card);
   state.card = CARDS.length - 1;
   state.newCard = null;
+  save();
   renderCard();
   show('home');
 }
@@ -312,6 +314,7 @@ function confirmAddCard() {
 function switchCard() {
   state.card = (state.card + 1) % CARDS.length;
   renderCard();
+  save();
 }
 
 function paintCard(el, c) {
@@ -356,5 +359,39 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ---------- saving ----------
+// Cards, the chosen card and history are kept on this device, so they
+// survive a refresh. Storage can be blocked (private mode etc.), so every
+// read and write is wrapped and the app still works without it.
+const STORE_KEY = 'glancepay.v1';
+
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      cards: CARDS,
+      card: state.card,
+      history: state.history.map((h) => ({ ...h, at: h.at.toISOString() })),
+    }));
+  } catch (e) { /* storage unavailable: keep working in memory */ }
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const isColor = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+    const cards = (Array.isArray(data.cards) ? data.cards : []).filter((c) =>
+      c && typeof c.name === 'string' && typeof c.last === 'string' && isColor(c.bg) && isColor(c.fg));
+    if (cards.length) CARDS.splice(0, CARDS.length, ...cards);
+    state.card = Number.isInteger(data.card) && data.card >= 0 && data.card < CARDS.length ? data.card : 0;
+    state.history = (Array.isArray(data.history) ? data.history : [])
+      .filter((h) => h && typeof h.merchant === 'string' && isFinite(h.amount))
+      .map((h) => ({ ...h, at: new Date(h.at) }))
+      .filter((h) => !isNaN(h.at));
+  } catch (e) { /* bad or missing data: start fresh */ }
+}
+
+load();
 renderCard();
 show('home');
