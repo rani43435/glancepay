@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glance Pay – demo pay code</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; font-family: system-ui, sans-serif; background: #f2f2ef; color: #111; }
+  #qr img { width: 320px; height: 320px; image-rendering: pixelated; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  input { font: inherit; padding: 8px 10px; border: 1px solid #999; border-radius: 8px; }
+  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: none; background: #111; color: #fff; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h1 style="margin:0">Demo pay code</h1>
+  <p style="margin:0">Show this to the camera in Glance Pay.</p>
+  <div id="qr"></div>
+  <form id="f">
+    <label>Shop <input id="m" value="Demo Café"></label>
+    <label>Amount <input id="a" value="3.80" size="6"></label>
+    <label>Item <input id="i" value="Flat white"></label>
+    <button>Update</button>
+  </form>
+<script>
+  function draw() {
+    const m = document.getElementById('m').value;
+    const a = document.getElementById('a').value;
+    const i = document.getElementById('i').value;
+    const text = 'glancepay:pay?m=' + encodeURIComponent(m) + '&a=' + encodeURIComponent(a) + '&c=EUR&i=' + encodeURIComponent(i);
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    document.getElementById('qr').innerHTML = qr.createImgTag(8, 16);
+  }
+  document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); draw(); });
+  draw();
+</script>
+</body>
+</html>

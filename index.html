@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=600, initial-scale=1">
+<title>Glance Pay</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<main id="app">
+
+  <!-- HOME -->
+  <section class="screen" id="home" data-screen>
+    <div class="brand">Glance Pay</div>
+    <div class="balance-label">Card</div>
+    <div class="balance">Visa •• 42</div>
+    <div class="row">
+      <button class="btn primary" data-go="scan">Scan to pay</button>
+      <button class="btn" data-go="history">History</button>
+    </div>
+  </section>
+
+  <!-- SCAN -->
+  <section class="screen" id="scan" data-screen hidden>
+    <div class="title">Look at a pay code</div>
+    <div class="cam-wrap">
+      <video id="cam" playsinline muted></video>
+      <div class="cam-msg" id="camMsg">Starting camera…</div>
+    </div>
+    <div class="row">
+      <button class="btn" data-action="demo">Use demo code</button>
+      <button class="btn ghost" data-go="home">Back</button>
+    </div>
+  </section>
+
+  <!-- CONFIRM -->
+  <section class="screen" id="confirm" data-screen hidden>
+    <div class="merchant" id="cMerchant">—</div>
+    <div class="amount" id="cAmount">—</div>
+    <div class="item" id="cItem"></div>
+    <div class="row">
+      <button class="btn primary" data-action="pay">Pay</button>
+      <button class="btn ghost" data-action="cancel">Cancel</button>
+    </div>
+  </section>
+
+  <!-- PAYING -->
+  <section class="screen center" id="paying" data-screen hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="title" id="payingText">Paying…</div>
+  </section>
+
+  <!-- DONE -->
+  <section class="screen center" id="done" data-screen hidden>
+    <svg class="big-icon ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
+    <div class="title">Paid</div>
+    <div class="sub" id="doneText"></div>
+    <button class="btn primary" data-go="home">Done</button>
+  </section>
+
+  <!-- CANCELLED -->
+  <section class="screen center" id="cancelled" data-screen hidden>
+    <svg class="big-icon warn" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>
+    <div class="title">Cancelled</div>
+    <div class="sub">Nothing was charged</div>
+    <button class="btn primary" data-go="home">OK</button>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="screen" id="history" data-screen hidden>
+    <div class="title">History</div>
+    <ul class="list" id="historyList"></ul>
+    <button class="btn ghost" data-go="home">Back</button>
+  </section>
+
+</main>
+</body>
+</html>
