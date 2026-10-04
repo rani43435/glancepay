@@ -36,11 +36,21 @@
 
   /* Controls: show on any touch/move, hide after 3 s */
   #bar {
-    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
-    display: flex; align-items: center; gap: 14px; padding: 10px 16px;
-    background: rgba(20,21,24,.85); border: 1px solid var(--line); border-radius: 999px;
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(900px, 94vw);
+    display: flex; flex-direction: column; gap: 10px; padding: 12px 18px;
+    background: rgba(20,21,24,.88); border: 1px solid var(--line); border-radius: 22px;
     transition: opacity .3s;
   }
+  .seek { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .seek input { flex: 1; width: auto; }
+  .btns { display: flex; align-items: center; gap: 12px; }
+  .gap { flex: 1; }
+  .btn.round { display: flex; align-items: center; gap: 2px; padding: 0 14px; }
+  .btn.round.big { width: 56px; height: 56px; padding: 0; justify-content: center; border-color: var(--accent); }
+  .btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn.big svg { stroke: var(--accent); }
+  .btn.big:focus-visible svg { stroke: #000; }
+  .btn b { font-size: 14px; }
   body.idle #bar { opacity: 0; pointer-events: none; }
   body.idle { cursor: none; }
   .btn {
@@ -68,11 +78,26 @@
 </div>
 
 <div id="bar" hidden>
-  <button class="btn primary" id="play">Pause</button>
-  <label class="ctl">Glow <input type="range" id="amount" min="0" max="100" value="90"></label>
-  <label class="ctl">Size <input type="range" id="size" min="35" max="90" value="62"></label>
-  <button class="btn" id="open2">Other video</button>
-  <button class="btn" id="full">Full screen</button>
+  <div class="seek">
+    <span id="cur">0:00</span>
+    <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
+    <span id="dur">0:00</span>
+  </div>
+  <div class="btns">
+    <button class="btn round" id="back" aria-label="Back 10 seconds">
+      <svg viewBox="0 0 24 24"><path d="M11 6L5 12l6 6"/><path d="M19 6l-6 6 6 6"/></svg><b>10</b>
+    </button>
+    <button class="btn round big" id="play" aria-label="Pause">
+      <svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14M16 5v14"/></svg>
+    </button>
+    <button class="btn round" id="fwd" aria-label="Forward 10 seconds">
+      <b>10</b><svg viewBox="0 0 24 24"><path d="M5 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/></svg>
+    </button>
+    <span class="gap"></span>
+    <label class="ctl">Glow <input type="range" id="amount" min="0" max="100" value="90"></label>
+    <button class="btn" id="open2">Other video</button>
+    <button class="btn" id="full">Full screen</button>
+  </div>
 </div>
 
 <input type="file" id="file" accept="video/*">
@@ -123,10 +148,24 @@ paint();
 
 // Controls
 $('play').onclick = () => (video.paused ? video.play() : video.pause());
-video.onplay = () => ($('play').textContent = 'Pause');
-video.onpause = () => ($('play').textContent = 'Play');
+const PAUSE = '<path d="M8 5v14M16 5v14"/>', PLAY = '<path d="M7 5l12 7-12 7z"/>';
+video.onplay = () => { $('playIcon').innerHTML = PAUSE; $('play').setAttribute('aria-label', 'Pause'); };
+video.onpause = () => { $('playIcon').innerHTML = PLAY; $('play').setAttribute('aria-label', 'Play'); wake(); };
+$('back').onclick = () => (video.currentTime = Math.max(0, video.currentTime - 10));
+$('fwd').onclick = () => (video.currentTime = Math.min(video.duration || 0, video.currentTime + 10));
+
+// Position bar
+const fmt = (t) => { t = Math.floor(t || 0); const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); };
+let dragging = false;
+video.ontimeupdate = () => {
+  $('cur').textContent = fmt(video.currentTime);
+  if (!dragging && video.duration) $('seek').value = (video.currentTime / video.duration) * 1000;
+};
+video.ondurationchange = () => ($('dur').textContent = fmt(video.duration));
+$('seek').oninput = (e) => { dragging = true; if (video.duration) { video.currentTime = (e.target.value / 1000) * video.duration; $('cur').textContent = fmt(video.currentTime); } };
+$('seek').onchange = () => (dragging = false);
 $('amount').oninput = (e) => stage.style.setProperty('--amount', e.target.value / 100);
-$('size').oninput = (e) => stage.style.setProperty('--size', e.target.value);
 $('full').onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
