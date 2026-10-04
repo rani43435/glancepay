@@ -17,8 +17,11 @@
   /* The glow: a tiny copy of the frame, stretched and blurred behind the video */
   #glow {
     position: absolute; width: calc(var(--size) * 1vw); aspect-ratio: var(--ratio);
-    transform: scale(var(--spread)); filter: blur(var(--blur)) saturate(1.6);
-    opacity: var(--amount); transition: opacity .3s; pointer-events: none;
+    transform: scale(var(--spread)); opacity: var(--amount); pointer-events: none;
+    /* No CSS blur (too heavy for the Pocket TV): a tiny canvas stretched up is
+       already soft, and a static mask fades its edges out. */
+    -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
+    mask-image: radial-gradient(closest-side, #000 55%, transparent);
   }
   #video {
     position: relative; width: calc(var(--size) * 1vw); max-height: 90vh; aspect-ratio: var(--ratio);
@@ -53,8 +56,8 @@
 </style>
 </head>
 <body>
-<div id="stage" style="--size:62;--ratio:16/9;--spread:1.35;--blur:70px;--amount:.9">
-  <canvas id="glow" width="48" height="27"></canvas>
+<div id="stage" style="--size:62;--ratio:16/9;--spread:1.6;--amount:.9">
+  <canvas id="glow" width="12" height="7"></canvas>
   <video id="video" playsinline></video>
 </div>
 
@@ -77,10 +80,12 @@
 <script>
 // Ambient Video: plays a local video and lights up the space around it with the
 // colours at the edge of the picture (an Ambilight). Each frame is drawn into a
-// 48x27 canvas behind the video; CSS stretches and blurs it into the glow.
+// 12x7 canvas behind the video; stretched up, it becomes the glow.
 const $ = (id) => document.getElementById(id);
 const video = $('video'), glow = $('glow'), stage = $('stage');
 const g = glow.getContext('2d', { alpha: false });
+g.filter = 'saturate(1.6)';
+let last = 0;
 let url = null;
 
 function openPicker() { $('file').click(); }
@@ -104,8 +109,13 @@ video.onloadedmetadata = () => {
 };
 
 // Draw the current frame into the glow, every frame the video shows.
+// ~12 updates a second is plenty for a glow and keeps the device cool.
 function paint() {
-  if (video.readyState >= 2) g.drawImage(video, 0, 0, glow.width, glow.height);
+  const now = performance.now();
+  if (video.readyState >= 2 && !video.paused && now - last > 80) {
+    g.drawImage(video, 0, 0, glow.width, glow.height);
+    last = now;
+  }
   if ('requestVideoFrameCallback' in video) video.requestVideoFrameCallback(paint);
   else requestAnimationFrame(paint);
 }
