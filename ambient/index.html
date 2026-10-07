@@ -20,11 +20,11 @@
     transform: scale(var(--spread)); opacity: var(--amount); pointer-events: none;
     /* No CSS blur (too heavy for the Pocket TV): a tiny canvas stretched up is
        already soft, and a static mask fades its edges out. */
-    -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
-    mask-image: radial-gradient(closest-side, #000 55%, transparent);
+    -webkit-mask-image: radial-gradient(closest-side, #000 68%, transparent);
+    mask-image: radial-gradient(closest-side, #000 68%, transparent);
   }
   #video {
-    position: relative; width: calc(var(--size) * 1vw); max-height: 90vh; aspect-ratio: var(--ratio);
+    position: relative; width: calc(var(--size) * 1vw); max-height: 96vh; aspect-ratio: var(--ratio);
     background: #000; border-radius: 6px; display: block;
   }
 
@@ -45,7 +45,7 @@
   .seek input { flex: 1; width: auto; }
   .btns { display: flex; align-items: center; gap: 12px; }
   .gap { flex: 1; }
-  .btn.round { display: flex; align-items: center; gap: 2px; padding: 0 14px; }
+  .btn.round { display: flex; align-items: center; gap: 2px; padding: 0 14px; flex: none; }
   .btn.round.big { width: 56px; height: 56px; padding: 0; justify-content: center; border-color: var(--accent); }
   .btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .btn.big svg { stroke: var(--accent); }
@@ -66,7 +66,7 @@
 </style>
 </head>
 <body>
-<div id="stage" style="--size:62;--ratio:16/9;--spread:1.6;--amount:.9">
+<div id="stage" style="--size:72;--ratio:16/9;--spread:1.8;--amount:1">
   <canvas id="glow" width="12" height="7"></canvas>
   <video id="video" playsinline></video>
 </div>
@@ -94,7 +94,8 @@
       <b>10</b><svg viewBox="0 0 24 24"><path d="M5 6l6 6-6 6"/><path d="M13 6l6 6-6 6"/></svg>
     </button>
     <span class="gap"></span>
-    <label class="ctl">Glow <input type="range" id="amount" min="0" max="100" value="90"></label>
+    <label class="ctl">Glow <input type="range" id="amount" min="0" max="100" value="100"></label>
+    <label class="ctl">Size <input type="range" id="size" min="35" max="95" value="72"></label>
     <button class="btn" id="open2">Other video</button>
     <button class="btn" id="full">Full screen</button>
   </div>
@@ -109,7 +110,7 @@
 const $ = (id) => document.getElementById(id);
 const video = $('video'), glow = $('glow'), stage = $('stage');
 const g = glow.getContext('2d', { alpha: false });
-g.filter = 'saturate(1.6)';
+g.filter = 'saturate(2) brightness(1.35)';
 let last = 0;
 let url = null;
 
@@ -166,6 +167,7 @@ video.ondurationchange = () => ($('dur').textContent = fmt(video.duration));
 $('seek').oninput = (e) => { dragging = true; if (video.duration) { video.currentTime = (e.target.value / 1000) * video.duration; $('cur').textContent = fmt(video.currentTime); } };
 $('seek').onchange = () => (dragging = false);
 $('amount').oninput = (e) => stage.style.setProperty('--amount', e.target.value / 100);
+$('size').oninput = (e) => stage.style.setProperty('--size', e.target.value);
 $('full').onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
