@@ -73,8 +73,9 @@
 
 <div id="pick">
   <div class="title">Ambient Video</div>
-  <div class="sub">Pick a video from this device</div>
+  <div class="sub">Pick a video from this device, or share a YouTube tab (Chrome on a computer)</div>
   <button class="btn primary" id="open" autofocus>Choose video</button>
+  <button class="btn" id="share">YouTube / Share tab</button>
 </div>
 
 <div id="bar" hidden>
@@ -174,7 +175,24 @@ function sampleEdges() {
 }
 let url = null;
 
-function openPicker() { $('file').click(); }
+function openPicker() { stopShare(); $('file').click(); }
+
+// Screen / tab capture: lets the glow follow a YouTube tab. DRM sites (Netflix, HBO) show black.
+let shared = null;
+function stopShare() { if (shared) { shared.getTracks().forEach((t) => t.stop()); shared = null; video.srcObject = null; } }
+$('share').onclick = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    alert('Tab sharing needs Chrome on a computer.'); return;
+  }
+  try {
+    const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false });
+    stopShare(); shared = s;
+    if (url) { URL.revokeObjectURL(url); url = null; }
+    video.removeAttribute('src'); video.srcObject = s; video.muted = true; video.play();
+    s.getVideoTracks()[0].onended = () => { stopShare(); $('pick').hidden = false; $('bar').hidden = true; };
+    $('pick').hidden = true; $('bar').hidden = false; wake();
+  } catch (e) { /* user cancelled */ }
+};
 $('open').onclick = openPicker;
 $('open2').onclick = openPicker;
 
