@@ -70,6 +70,9 @@
   .row input { flex: 1; font: inherit; font-size: 17px; color: var(--fg); background: #111; border: 1.5px solid var(--line);
     border-radius: 999px; padding: 0 18px; min-height: 44px; outline: none; }
   .row input:focus { border-color: var(--accent); }
+  #toast { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 14px;
+    background: rgba(20,21,24,.95); border: 1px solid var(--line); font-size: 16px; max-width: 92vw; text-align: center; transition: opacity .4s; }
+  #toast[hidden] { display: none; }
   .hint { font-size: 14px; color: var(--dim); max-width: 560px; }
 </style>
 </head>
@@ -116,6 +119,7 @@
 </div>
 
 <input type="file" id="file" accept="video/*">
+<div id="toast" hidden></div>
 
 <script>
 // Ambient Video: plays a local video and lights up the space around it with the
@@ -252,6 +256,8 @@ $('ytgo').onclick = playYT;
 $('yt').onclick = togglePlay;
 video.onclick = togglePlay;
 document.addEventListener('dblclick', (e) => { if (e.target.closest('#stage')) $('full').click(); });
+// The sharing bar and window size change the layout: keep the stage filling the real window.
+addEventListener('resize', () => (last = 0));
 $('ytlink').onkeydown = (e) => { if (e.key === 'Enter') playYT(); };
 function showPick() { video.pause(); $('pick').hidden = false; $('bar').hidden = true; document.body.classList.remove('idle'); }
 const playing = () => mode === 'yt' ? yt && yt.getPlayerState && yt.getPlayerState() === 1 : !video.paused;
@@ -319,7 +325,13 @@ $('seek').oninput = (e) => { dragging = true; const d = dur(); if (d) { seekTo((
 $('seek').onchange = () => (dragging = false);
 $('amount').oninput = (e) => stage.style.setProperty('--amount', e.target.value / 100);
 $('size').oninput = (e) => stage.style.setProperty('--size', e.target.value);
+function toast(t) { const el = $('toast'); el.innerHTML = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 6000); }
 $('full').onclick = () => {
+  if (mode === 'yt') {
+    // While Chrome is sharing this tab it keeps "full screen" inside the tab, so use the window's full screen instead.
+    toast(/Mac/.test(navigator.platform) ? 'For full screen press <b>Ctrl + Cmd + F</b> (Chrome keeps it inside the tab while sharing)' : 'For full screen press <b>F11</b>');
+    return;
+  }
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
 };
