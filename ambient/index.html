@@ -23,14 +23,14 @@
     -webkit-mask-image: radial-gradient(closest-side, #000 68%, transparent);
     mask-image: radial-gradient(closest-side, #000 68%, transparent);
   }
-  #video {
+  #video, #yt {
     position: relative; width: calc(var(--size) * 1vw); max-height: 96vh; aspect-ratio: var(--ratio);
     background: #000; border-radius: 6px; display: block;
   }
 
   /* Start screen */
   #pick { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
-  #pick[hidden] { display: none; }
+  #pick[hidden], #bar[hidden] { display: none; }
   .title { font-size: 34px; font-weight: 600; letter-spacing: .5px; }
   .sub { font-size: 18px; color: var(--dim); }
 
@@ -63,19 +63,31 @@
   label.ctl { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dim); }
   input[type=range] { width: 90px; accent-color: var(--accent); }
   #file { display: none; }
+  #yt iframe { width: 100%; height: 100%; border: 0; border-radius: 6px; display: block; }
+  body.ytmode #video, body:not(.ytmode) #yt { display: none; }
+  .row { display: flex; gap: 10px; width: min(640px, 92vw); }
+  .row input { flex: 1; font: inherit; font-size: 17px; color: var(--fg); background: #111; border: 1.5px solid var(--line);
+    border-radius: 999px; padding: 0 18px; min-height: 44px; outline: none; }
+  .row input:focus { border-color: var(--accent); }
+  .hint { font-size: 14px; color: var(--dim); max-width: 560px; }
 </style>
 </head>
 <body>
 <div id="stage" style="--size:72;--ratio:16/9;--spread:1.8;--amount:1">
   <canvas id="glow" width="16" height="9"></canvas>
   <video id="video" playsinline></video>
+  <div id="yt"><div id="ytp"></div></div>
 </div>
 
 <div id="pick">
   <div class="title">Ambient Video</div>
-  <div class="sub">Pick a video from this device, or share a YouTube tab (Chrome on a computer)</div>
+  <div class="sub">Pick a video from this device, or paste a YouTube link</div>
   <button class="btn primary" id="open" autofocus>Choose video</button>
-  <button class="btn" id="share">YouTube / Share tab</button>
+  <div class="row">
+    <input id="ytlink" placeholder="YouTube link" autocomplete="off" spellcheck="false">
+    <button class="btn primary" id="ytgo">Play</button>
+  </div>
+  <div class="hint">YouTube needs Chrome on a computer. Chrome will ask to share <b>this tab</b> — that is how the glow reads the colours.</div>
 </div>
 
 <div id="bar" hidden>
@@ -151,7 +163,12 @@ function boost([r, gg, b]) {
 }
 
 function sampleEdges() {
-  s.drawImage(video, 0, 0, SW, SH);
+  if (mode === 'yt') {
+    // Cut the YouTube player's rectangle out of the capture of this tab.
+    const r = $('yt').getBoundingClientRect();
+    const kx = cap.videoWidth / innerWidth, ky = cap.videoHeight / innerHeight;
+    s.drawImage(cap, (r.left + 2) * kx, (r.top + 2) * ky, (r.width - 4) * kx, (r.height - 4) * ky, 0, 0, SW, SH);
+  } else s.drawImage(video, 0, 0, SW, SH);
   const px = s.getImageData(0, 0, SW, SH).data;
   const top = strip(px, GW, 'top'), bottom = strip(px, GW, 'bottom');
   const left = strip(px, GH, 'left'), right = strip(px, GH, 'right');
@@ -175,31 +192,77 @@ function sampleEdges() {
 }
 let url = null;
 
-function openPicker() { stopShare(); $('file').click(); }
+function openPicker() { $('file').click(); }
 
-// Screen / tab capture: lets the glow follow a YouTube tab. DRM sites (Netflix, HBO) show black.
-let shared = null;
-function stopShare() { if (shared) { shared.getTracks().forEach((t) => t.stop()); shared = null; video.srcObject = null; } }
-$('share').onclick = async () => {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    alert('Tab sharing needs Chrome on a computer.'); return;
-  }
+// YouTube mode: the video plays in YouTube's own player (so every control works),
+// and the glow reads its colours from a capture of this tab, cropped to the player.
+// DRM sites (Netflix, HBO) can't work this way: their picture captures as black.
+let mode = 'file', yt = null, cap = document.createElement('video'), capStream = null, ytTimer = null;
+cap.muted = true; cap.playsInline = true;
+function ytId(t) {
+  t = t.trim();
+  const m = t.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/) || t.match(/^([\w-]{11})$/);
+  const l = t.match(/[?&]list=([\w-]+)/);
+  return m ? { id: m[1], list: l && l[1] } : null;
+}
+function stopYT() {
+  if (capStream) { capStream.getTracks().forEach((x) => x.stop()); capStream = null; }
+  if (yt) { yt.destroy(); yt = null; $('yt').innerHTML = '<div id="ytp"></div>'; }
+  clearInterval(ytTimer); mode = 'file'; document.body.classList.remove('ytmode');
+}
+let apiReady = null;
+function loadAPI() {
+  if (!apiReady) apiReady = new Promise((res) => {
+    window.onYouTubeIframeAPIReady = res;
+    const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(sc);
+  });
+  return apiReady;
+}
+async function playYT() {
+  const v = ytId($('ytlink').value);
+  if (!v) { $('ytlink').focus(); $('ytlink').placeholder = 'Paste a YouTube link here'; $('ytlink').value = ''; return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { alert('YouTube mode needs Chrome on a computer.'); return; }
+  let st;
   try {
-    const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false });
-    stopShare(); shared = s;
-    if (url) { URL.revokeObjectURL(url); url = null; }
-    video.removeAttribute('src'); video.srcObject = s; video.muted = true; video.play();
-    s.getVideoTracks()[0].onended = () => { stopShare(); $('pick').hidden = false; $('bar').hidden = true; };
-    $('pick').hidden = true; $('bar').hidden = false; wake();
-  } catch (e) { /* user cancelled */ }
-};
+    st = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false,
+      preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude' });
+  } catch (e) { return; }
+  stopYT(); video.pause();
+  capStream = st; cap.srcObject = st; cap.play();
+  st.getVideoTracks()[0].onended = () => { stopYT(); showPick(); };
+  mode = 'yt'; document.body.classList.add('ytmode');
+  stage.style.setProperty('--ratio', '16/9');
+  $('pick').hidden = true; $('bar').hidden = false;
+  await loadAPI();
+  yt = new YT.Player('ytp', {
+    videoId: v.id,
+    playerVars: Object.assign({ autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1 }, v.list ? { list: v.list } : {}),
+    events: { onStateChange: (e) => setIcon(e.data !== YT.PlayerState.PLAYING) }
+  });
+  ytTimer = setInterval(() => {
+    if (!yt || !yt.getDuration) return;
+    const t = yt.getCurrentTime(), d = yt.getDuration();
+    $('cur').textContent = fmt(t); $('dur').textContent = fmt(d);
+    if (!dragging && d) $('seek').value = (t / d) * 1000;
+  }, 250);
+  wake();
+}
+$('ytgo').onclick = playYT;
+$('ytlink').onkeydown = (e) => { if (e.key === 'Enter') playYT(); };
+function showPick() { video.pause(); $('pick').hidden = false; $('bar').hidden = true; document.body.classList.remove('idle'); }
+const playing = () => mode === 'yt' ? yt && yt.getPlayerState && yt.getPlayerState() === 1 : !video.paused;
+const now = () => mode === 'yt' ? (yt && yt.getCurrentTime ? yt.getCurrentTime() : 0) : video.currentTime;
+const dur = () => mode === 'yt' ? (yt && yt.getDuration ? yt.getDuration() : 0) : video.duration;
+function seekTo(t) { t = Math.max(0, Math.min(dur() || 0, t)); if (mode === 'yt') { yt && yt.seekTo(t, true); } else video.currentTime = t; }
+function togglePlay() { if (mode === 'yt') { if (!yt || !yt.getPlayerState) return; playing() ? yt.pauseVideo() : yt.playVideo(); } else video.paused ? video.play() : video.pause(); }
 $('open').onclick = openPicker;
-$('open2').onclick = openPicker;
+$('open2').onclick = () => { stopYT(); showPick(); };
 
 $('file').onchange = () => {
   const f = $('file').files[0];
   if (!f) return;
   if (url) URL.revokeObjectURL(url);
+  stopYT();
   url = URL.createObjectURL(f);
   video.src = url;
   video.play();
@@ -215,33 +278,40 @@ video.onloadedmetadata = () => {
 // ~12 updates a second is plenty for a glow and keeps the device cool.
 function paint() {
   const now = performance.now();
-  if (video.readyState >= 2 && !video.paused && now - last > 80) {
+  const ok = mode === 'yt'
+    ? cap.readyState >= 2 && cap.videoWidth && document.body.classList.contains('idle')
+    : video.readyState >= 2 && !video.paused;
+  if (ok && now - last > 80) {
     sampleEdges();
     last = now;
   }
-  if ('requestVideoFrameCallback' in video) video.requestVideoFrameCallback(paint);
-  else requestAnimationFrame(paint);
+  requestAnimationFrame(paint);
 }
 paint();
 
 // Controls
-$('play').onclick = () => (video.paused ? video.play() : video.pause());
+$('play').onclick = togglePlay;
 const PAUSE = '<path d="M8 5v14M16 5v14"/>', PLAY = '<path d="M7 5l12 7-12 7z"/>';
-video.onplay = () => { $('playIcon').innerHTML = PAUSE; $('play').setAttribute('aria-label', 'Pause'); };
-video.onpause = () => { $('playIcon').innerHTML = PLAY; $('play').setAttribute('aria-label', 'Play'); wake(); };
-$('back').onclick = () => (video.currentTime = Math.max(0, video.currentTime - 10));
-$('fwd').onclick = () => (video.currentTime = Math.min(video.duration || 0, video.currentTime + 10));
+function setIcon(paused) {
+  $('playIcon').innerHTML = paused ? PLAY : PAUSE; $('play').setAttribute('aria-label', paused ? 'Play' : 'Pause');
+  if (paused) wake();
+}
+video.onplay = () => setIcon(false);
+video.onpause = () => setIcon(true);
+$('back').onclick = () => seekTo(now() - 10);
+$('fwd').onclick = () => seekTo(now() + 10);
 
 // Position bar
 const fmt = (t) => { t = Math.floor(t || 0); const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60;
   return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); };
 let dragging = false;
 video.ontimeupdate = () => {
+  if (mode === 'yt') return;
   $('cur').textContent = fmt(video.currentTime);
   if (!dragging && video.duration) $('seek').value = (video.currentTime / video.duration) * 1000;
 };
 video.ondurationchange = () => ($('dur').textContent = fmt(video.duration));
-$('seek').oninput = (e) => { dragging = true; if (video.duration) { video.currentTime = (e.target.value / 1000) * video.duration; $('cur').textContent = fmt(video.currentTime); } };
+$('seek').oninput = (e) => { dragging = true; const d = dur(); if (d) { seekTo((e.target.value / 1000) * d); $('cur').textContent = fmt((e.target.value / 1000) * d); } };
 $('seek').onchange = () => (dragging = false);
 $('amount').oninput = (e) => stage.style.setProperty('--amount', e.target.value / 100);
 $('size').oninput = (e) => stage.style.setProperty('--size', e.target.value);
@@ -258,7 +328,7 @@ let idleT;
 function wake() {
   document.body.classList.remove('idle');
   clearTimeout(idleT);
-  idleT = setTimeout(() => { if (!video.paused) document.body.classList.add('idle'); }, 3000);
+  idleT = setTimeout(() => { if (playing()) document.body.classList.add('idle'); }, 3000);
 }
 ['pointermove', 'pointerdown', 'keydown', 'touchstart'].forEach((ev) => document.addEventListener(ev, wake, { passive: true }));
 
@@ -266,8 +336,8 @@ function wake() {
 document.addEventListener('keydown', (e) => {
   if ($('pick').hidden === false) return;
   if (e.key === ' ' && document.activeElement.tagName !== 'BUTTON') { e.preventDefault(); $('play').click(); }
-  if (e.key === 'ArrowRight' && e.target.type !== 'range') video.currentTime += 10;
-  if (e.key === 'ArrowLeft' && e.target.type !== 'range') video.currentTime -= 10;
+  if (e.key === 'ArrowRight' && e.target.type !== 'range') seekTo(now() + 10);
+  if (e.key === 'ArrowLeft' && e.target.type !== 'range') seekTo(now() - 10);
 });
 </script>
 </body>
