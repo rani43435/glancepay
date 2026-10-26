@@ -91,6 +91,7 @@
     <input id="ytlink" placeholder="YouTube link" autocomplete="off" spellcheck="false">
     <button class="btn primary" id="ytgo">Play</button>
   </div>
+  <button class="btn" id="share">Or share another tab</button>
   <div class="hint">YouTube needs Chrome on a computer. Chrome will ask to share <b>this tab</b> — that is how the glow reads the colours.</div>
 </div>
 
@@ -212,6 +213,7 @@ function ytId(t) {
 }
 function stopYT() {
   if (capStream) { capStream.getTracks().forEach((x) => x.stop()); capStream = null; }
+  if (video.srcObject) video.srcObject = null;
   if (yt) { yt.destroy(); yt = null; $('yt').innerHTML = '<div id="ytp"></div>'; }
   clearInterval(ytTimer); mode = 'file'; document.body.classList.remove('ytmode');
 }
@@ -253,6 +255,16 @@ async function playYT() {
   wake();
 }
 $('ytgo').onclick = playYT;
+// Old way: share a YouTube tab. Real full screen works here, but you control the video in that tab.
+$('share').onclick = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { alert('Tab sharing needs Chrome on a computer.'); return; }
+  let st;
+  try { st = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false, selfBrowserSurface: 'exclude' }); } catch (e) { return; }
+  stopYT(); if (url) { URL.revokeObjectURL(url); url = null; }
+  capStream = st; video.removeAttribute('src'); video.srcObject = st; video.muted = true; video.play();
+  st.getVideoTracks()[0].onended = () => { video.srcObject = null; capStream = null; showPick(); };
+  $('pick').hidden = true; $('bar').hidden = false; wake();
+};
 $('yt').onclick = togglePlay;
 video.onclick = togglePlay;
 document.addEventListener('dblclick', (e) => { if (e.target.closest('#stage')) $('full').click(); });
