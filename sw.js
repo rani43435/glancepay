@@ -1,12 +1,12 @@
 // Keeps the app shell on the device so repeat launches open instantly,
 // even on a slow link. Pages: network first (to pick up updates), falling
 // back to the cache. Versioned files (?v=…), icons and jsQR: cache first.
-const CACHE = 'glancepay-v8';
+const CACHE = 'glancepay-v9';
 const SHELL = [
   './',
   'index.html',
   'style.css?v=20261003-7',
-  'app.js?v=20261003-7',
+  'app.js?v=20261104-1',
   'qr-worker.js?v=20261003-7',
   'icons/favicon.png',
 ];

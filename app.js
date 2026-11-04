@@ -447,6 +447,31 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ---------- head tilt: a light tilt to the right confirms the payment ----------
+// Only active on the Confirm screen. The head position when Confirm opens is
+// the starting point; tilting about 15° to the right and holding it for a
+// moment presses Pay. Small or quick movements are ignored.
+const TILT_DEG = 15;      // how far right counts as a tilt
+const TILT_HOLD_MS = 300; // how long the tilt must be held
+const tilt = { base: null, since: 0 };
+
+addEventListener('deviceorientation', (e) => {
+  if (state.screen !== 'confirm' || !state.pending || e.gamma == null) {
+    tilt.base = null; tilt.since = 0;
+    return;
+  }
+  if (tilt.base == null) { tilt.base = e.gamma; return; }
+  if (e.gamma - tilt.base >= TILT_DEG) {
+    if (!tilt.since) tilt.since = performance.now();
+    else if (performance.now() - tilt.since >= TILT_HOLD_MS) {
+      tilt.base = null; tilt.since = 0;
+      pay();
+    }
+  } else {
+    tilt.since = 0;
+  }
+});
+
 // ---------- saving ----------
 // Cards, the chosen card and history are kept on this device, so they
 // survive a refresh. Storage can be blocked (private mode etc.), so every
